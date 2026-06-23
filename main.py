@@ -74,7 +74,6 @@ LANG = {
         "validate_col_dev": "绝对偏差 (%)",
         "scope_title": "📋 推荐适用范围",
         "scope_text": "推荐适用范围：温度 <span style=\"color:#38bdf8;font-weight:700\">200-600 K</span>，压力 <span style=\"color:#38bdf8;font-weight:700\">0.1-10 MPa</span>。超出此范围时，PR方程计算偏差可能增大，建议以CoolProp基准值为参考。",
-        "meta_calc_convergence_error": "计算未收敛。可能原因: 输入工况接近临界点或超出了PR方程的适用极限。建议微调温度或压力值。",
         "meta_mixture_warning": "当前版本仅支持纯物质计算, 混合物功能正在开发中",
         "meta_page": "页面",
         "meta_main_page": "🏠 物性计算",
