@@ -58,9 +58,9 @@ LANG = {
         "error_no_fluid": "请选择物质。",
         "calc_ok": "✅ 计算成功完成！",
         "about_title": "ℹ️ 关于本软件",
-        "about_text": "**热物性计算软件** v2.0 为化工软件开发比赛设计。<br><br>**核心特色:**<br>- 🔩 **自研Peng-Robinson方程引擎**: 手写PR三次方程求解、剩余性质计算、对应态原理粘度/导热系数估算<br>- 📎 **CoolProp基准引擎**: 调用工业级物性数据库作为高精度对照<br>- 📈 **Plotly交互图表**: 悬停数值、缩放拖拽、双曲线叠加对比<br>- 🌐 **中英双语界面**: 一键切换<br><br>**适用范围:** 气相、液相、超临界态流体热物性估算",
+        "about_text": "**热物性计算软件** v1.0 为化工软件开发比赛设计。<br><br>**核心特色:**<br>- 🔩 **自研Peng-Robinson方程引擎**: 手写PR三次方程求解、剩余性质计算、对应态原理粘度/导热系数估算<br>- 📎 **CoolProp基准引擎**: 调用工业级物性数据库作为高精度对照<br>- 📈 **Plotly交互图表**: 悬停数值、缩放拖拽、双曲线叠加对比<br>- 🌐 **中英双语界面**: 一键切换<br><br>**适用范围:** 气相、液相、超临界态流体热物性估算",
         "first_time_msg": "⏳ 请在左侧输入参数并点击「开始计算」",
-        "fluid_info_label": "物质：{}  |  M = {} g/mol  |  Tc = {} K  |  Pc = {} MPa  |  ω = {}",
+        "fluid_info_label": "**物质:** {}  |  M = {} g/mol  |  Tc = {} K  |  Pc = {} MPa  |  ω = {}",
         "dev_expander_title": "📖 关于计算偏差的说明",
         "dev_expander_text": "对于水、醇类等强极性物质, 经典PR方程本身存在约5-15%的系统偏差, 这是模型的已知理论局限, 而非代码错误。具体原因包括:<br>- 未引入氢键缔合修正项<br>- 偏心因子ω对极性分子的描述能力有限<br>- 对应态原理的导热系数/粘度估算是半经验近似<br><br>如需更高精度, 建议参考CoolProp基准值。",
         "validate_title": "🔬 模型验证",
@@ -73,7 +73,8 @@ LANG = {
         "validate_col_CP": "CoolProp结果",
         "validate_col_dev": "绝对偏差 (%)",
         "scope_title": "📋 推荐适用范围",
-        "scope_text": "推荐适用范围：温度 <span style=\"color:#38bdf8;font-weight:700\">200-600 K</span>，压力 <span style=\"color:#38bdf8;font-weight:700\">0.1-10 MPa</span>。超出此范围时，PR方程计算偏差可能增大，建议以CoolProp基准值为参考。",
+        "scope_text": "推荐适用范围：温度 200-600 K，压力 0.1-10 MPa。超出此范围时，PR方程计算偏差可能增大，建议以CoolProp基准值为参考。",
+        "meta_calc_convergence_error": "计算未收敛。可能原因: 输入工况接近临界点或超出了PR方程的适用极限。建议微调温度或压力值。",
         "meta_mixture_warning": "当前版本仅支持纯物质计算, 混合物功能正在开发中",
         "meta_page": "页面",
         "meta_main_page": "🏠 物性计算",
@@ -112,7 +113,7 @@ LANG = {
         "error_no_fluid": "Please select a fluid.",
         "calc_ok": "✅ Calculation completed successfully!",
         "about_title": "ℹ️ About",
-        "about_text": "**Thermodynamic Property Calculator** v2.0 - Built for chemical engineering software competition.<br><br>**Key Features:**<br>- 🔩 **Self-developed PR EOS Engine**: Handwritten cubic equation solver, residual properties, corresponding-state transport properties<br>- 📎 **CoolProp Benchmark Engine**: Industrial-grade thermodynamic database as reference<br>- 📈 **Plotly Interactive Charts**: Hover values, zoom/pan, dual-curve overlay comparison<br>- 🌐 **Bilingual Interface**: One-click Chinese/English switch<br><br>**Scope:** Gas, liquid, and supercritical fluid property estimation",
+        "about_text": "**Thermodynamic Property Calculator** v1.0 - Built for chemical engineering software competition.<br><br>**Key Features:**<br>- 🔩 **Self-developed PR EOS Engine**: Handwritten cubic equation solver, residual properties, corresponding-state transport properties<br>- 📎 **CoolProp Benchmark Engine**: Industrial-grade thermodynamic database as reference<br>- 📈 **Plotly Interactive Charts**: Hover values, zoom/pan, dual-curve overlay comparison<br>- 🌐 **Bilingual Interface**: One-click Chinese/English switch<br><br>**Scope:** Gas, liquid, and supercritical fluid property estimation",
         "first_time_msg": "⏳ Enter parameters in the sidebar and click Calculate",
         "fluid_info_label": "**Fluid:** {}  |  M = {} g/mol  |  Tc = {} K  |  Pc = {} MPa  |  ω = {}",
         "dev_expander_title": "📖 About Calculation Deviations",
@@ -562,8 +563,10 @@ def _compute_scan_data(fluid_info_tuple, P_pa, T_range_start, T_range_end, T_ran
     return pr_d, pr_c, pr_t, pr_v, cp_d, cp_c, cp_t, cp_v
 
 def create_property_plots(fluid_info, P_pa, T_range, lang):
-    """Create 4 interactive Plotly subplots with PR vs CoolProp overlay,
-    legend toggle, and max-deviation annotations."""
+    """Create 4 interactive Plotly subplots with PR vs CoolProp overlay.
+
+    Subplots: Density, Cp, Thermal Conductivity, Viscosity vs Temperature.
+    """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
@@ -581,6 +584,7 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
     cp_visc_arr = np.full(n, np.nan)
 
     for i, T_val in enumerate(T_range):
+        # PR Engine
         pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
         if "error" not in pr_res:
             pr_density_arr[i] = pr_res.get("density", np.nan)
@@ -588,6 +592,7 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
             pr_tc_arr[i] = pr_res.get("thermal_conductivity", np.nan)
             pr_visc_arr[i] = pr_res.get("viscosity", np.nan)
 
+        # CoolProp Engine
         cp_res = coolprop_properties(T_val, P_pa, cp_name, M_gmol / 1000.0)
         if "error" not in cp_res:
             cp_density_arr[i] = cp_res.get("density", np.nan)
@@ -612,29 +617,32 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
         legend_pr = "PR\u65b9\u7a0b(\u81ea\u7814)"
         legend_cp = "CoolProp(\u57fa\u51c6)"
         x_label = "\u6e29\u5ea6 (K)"
-        ann_dev = "\u6700\u5927\u504f\u5dee"
     else:
         subplot_titles = [
-            "Density vs T", "Cp vs T", "TC vs T", "Viscosity vs T",
+            "Density vs T",
+            "Cp vs T",
+            "TC vs T",
+            "Viscosity vs T",
         ]
         y_labels = [
-            "Density (kg/m\u00b3)", "Cp (kJ/(kg\u00b7K))",
-            "TC (W/(m\u00b7K))", "Viscosity (\u00b5Pa\u00b7s)",
+            "Density (kg/m\u00b3)",
+            "Cp (kJ/(kg\u00b7K))",
+            "TC (W/(m\u00b7K))",
+            "Viscosity (\u00b5Pa\u00b7s)",
         ]
         legend_pr = "PR EOS (Self-dev)"
         legend_cp = "CoolProp (Ref.)"
         x_label = "Temperature (K)"
-        ann_dev = "Max Dev"
 
     fig = make_subplots(
         rows=2, cols=2,
         subplot_titles=subplot_titles,
-        vertical_spacing=0.14,
+        vertical_spacing=0.12,
         horizontal_spacing=0.10,
     )
 
-    color_pr = "#7c3aed"
-    color_cp = "#06b6d4"
+    color_pr = "#1f77b4"
+    color_cp = "#ff7f0e"
 
     data_pairs = [
         (pr_density_arr, cp_density_arr, 1, 1, y_labels[0]),
@@ -643,81 +651,57 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
         (pr_visc_arr, cp_visc_arr, 2, 2, y_labels[3]),
     ]
 
-    annotations = []
-
     for idx, (pr_data, cp_data, row, col, yl) in enumerate(data_pairs):
         show_legend = idx == 0
-
-        # PR curve
         fig.add_trace(
             go.Scatter(
-                x=T_range, y=pr_data, mode="lines",
+                x=T_range,
+                y=pr_data,
+                mode="lines",
                 name=legend_pr,
-                line=dict(color=color_pr, width=2.2),
-                hovertemplate=f"{x_label}: %{{x:.1f}}<br>{yl}: %{{y:.3f}}<extra></extra>",
-                legendgroup="pr", showlegend=show_legend,
+                line=dict(color=color_pr, width=2),
+                hovertemplate=(
+                    f"{x_label}: %{{x:.1f}}<br>"
+                    f"{yl}: %{{y:.3f}}<extra></extra>"
+                ),
+                legendgroup="pr",
+                showlegend=show_legend,
             ),
-            row=row, col=col,
+            row=row,
+            col=col,
         )
-        # CoolProp curve
         fig.add_trace(
             go.Scatter(
-                x=T_range, y=cp_data, mode="lines",
+                x=T_range,
+                y=cp_data,
+                mode="lines",
                 name=legend_cp,
-                line=dict(color=color_cp, width=2.2, dash="dash"),
-                hovertemplate=f"{x_label}: %{{x:.1f}}<br>{yl}: %{{y:.3f}}<extra></extra>",
-                legendgroup="cp", showlegend=show_legend,
+                line=dict(color=color_cp, width=2, dash="dash"),
+                hovertemplate=(
+                    f"{x_label}: %{{x:.1f}}<br>"
+                    f"{yl}: %{{y:.3f}}<extra></extra>"
+                ),
+                legendgroup="cp",
+                showlegend=show_legend,
             ),
-            row=row, col=col,
+            row=row,
+            col=col,
         )
 
-        # ---- Max deviation annotation ----
-        mask = np.isfinite(pr_data) & np.isfinite(cp_data) & (np.abs(cp_data) > 1e-12)
-        if np.any(mask):
-            dev_pct = np.abs((pr_data[mask] - cp_data[mask]) / cp_data[mask]) * 100
-            max_idx_local = np.argmax(dev_pct)
-            max_idx = np.where(mask)[0][max_idx_local]
-            T_ann = T_range[max_idx]
-            pr_ann = pr_data[max_idx]
-            cp_ann = cp_data[max_idx]
-            dev_ann = dev_pct[max_idx_local]
-            # Choose which curve to anchor: the one further from the other
-            y_mid = (pr_ann + cp_ann) / 2
-            # Annotate at PR curve position with arrow to CoolProp
-            annotations.append(dict(
-                x=T_ann, y=pr_ann,
-                xref=f"x{idx+1}", yref=f"y{idx+1}",
-                text=f"<b>{ann_dev}</b><br>{dev_ann:.1f}%",
-                showarrow=True, arrowhead=3, arrowsize=1.5,
-                arrowwidth=1.5, arrowcolor="#f59e0b",
-                ax=0, ay=-40 if pr_ann > cp_ann else 40,
-                font=dict(size=10, color="#f59e0b", family="Arial Black"),
-                bgcolor="rgba(0,0,0,0.7)",
-                bordercolor="#f59e0b", borderwidth=1, borderpad=4,
-            ))
-
-    # Apply axis labels
     for i, yl in enumerate(y_labels, 1):
-        r = 1 if i <= 2 else 2
-        c = 1 if i % 2 == 1 else 2
-        fig.update_xaxes(title_text=x_label, row=r, col=c, gridcolor="rgba(128,128,128,0.15)")
-        fig.update_yaxes(title_text=yl, row=r, col=c, gridcolor="rgba(128,128,128,0.15)")
+        row = 1 if i <= 2 else 2
+        col = 1 if i % 2 == 1 else 2
+        fig.update_xaxes(title_text=x_label, row=row, col=col)
+        fig.update_yaxes(title_text=yl, row=row, col=col)
 
     fig.update_layout(
-        height=750,
+        height=700,
         hovermode="x unified",
         legend=dict(
-            orientation="h", yanchor="bottom", y=1.03,
-            xanchor="center", x=0.5,
-            itemclick="toggle", itemdoubleclick="toggleothers",
-            bgcolor="rgba(0,0,0,0.3)", bordercolor="rgba(255,255,255,0.1)",
-            font=dict(color="#e2e8f0", size=12),
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
         ),
-        annotations=annotations,
         margin=dict(l=50, r=30, t=80, b=50),
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        template="plotly_white",
     )
 
     return fig
@@ -764,88 +748,63 @@ def run_calculation(T_input, P_input, fluid_info_tuple):
 
 
 def render_results(pr_result, cp_result, fluid_info, P_pa, t):
-    """Render results: one card per property with PR-vs-CoolProp side-by-side."""
+    """Render the results section in the main content area."""
     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
-    fluid_display = name_zh if st.session_state["lang"] == "zh" else name_en
-    is_zh = st.session_state["lang"] == "zh"
 
-    # ---- Fluid info + results header ----
+    fluid_display = name_zh if st.session_state["lang"] == "zh" else name_en
     st.markdown(
-        '<div style="font-size:0.95rem;color:rgba(255,255,255,0.70);margin-bottom:2px;">'
-        + t["fluid_info_label"].format(fluid_display, M_gmol, Tc, Pc, omega)
-        + '</div>',
-        unsafe_allow_html=True,
+        t["fluid_info_label"].format(fluid_display, M_gmol, Tc, Pc, omega)
     )
+    st.markdown("---")
+
+    st.subheader(t["results_header"])
     st.success(t["calc_ok"])
 
     props_map = [
-        ("density",              t["density"],      t["unit_density"]),
-        ("cp",                   t["cp"],           t["unit_cp"]),
-        ("cv",                   t["cv"],           t["unit_cp"]),
+        ("density",          t["density"],          t["unit_density"]),
+        ("cp",               t["cp"],               t["unit_cp"]),
+        ("cv",               t["cv"],               t["unit_cp"]),
         ("thermal_conductivity", t["thermal_cond"], t["unit_tc"]),
-        ("viscosity",            t["viscosity"],    t["unit_visc"]),
+        ("viscosity",        t["viscosity"],        t["unit_visc"]),
     ]
-    _fmt = {"density": ".3f", "cp": ".4f", "cv": ".4f", "thermal_conductivity": ".4f", "viscosity": ".4f"}
 
-    pr_label = "\u81ea\u7814PR\u65b9\u7a0b" if is_zh else "PR EOS"
-    cp_label = "CoolProp\u57fa\u51c6" if is_zh else "CoolProp"
+    col_pr, col_cp, col_dev = st.columns(3)
 
-    # ---- 5 property cards, one per row ----
-    for key, name, unit in props_map:
-        pr_val = pr_result.get(key) if (pr_result and "error" not in pr_result) else None
-        cp_val = cp_result.get(key) if (cp_result and "error" not in cp_result) else None
-        dev_val = calc_deviation(pr_val, cp_val)
-
-        if dev_val is not None:
-            abs_d = abs(dev_val)
-            if abs_d <= 5:
-                dev_class = "dev-green-v2"; dot_class = "dot-green"
-            elif abs_d <= 10:
-                dev_class = "dev-yellow-v2"; dot_class = "dot-yellow"
+    with col_pr:
+        st.markdown(f"**{t['pr_engine']}**")
+        for key, label, unit in props_map:
+            val = None
+            if pr_result and "error" not in pr_result:
+                val = pr_result.get(key)
+            if val is not None:
+                st.metric(label=label, value=f"{val:.4f} {unit}")
             else:
-                dev_class = "dev-red-v2"; dot_class = "dot-red"
-            dev_str = f'{dev_val:+.2f}%'
-        else:
-            dev_class = "dev-na-v2"; dot_class = "dot-na"
-            dev_str = "N/A"
+                st.metric(label=label, value="N/A")
 
-        pr_s = f"{pr_val:{_fmt[key]}}" if pr_val is not None else "N/A"
-        cp_s = f"{cp_val:{_fmt[key]}}" if cp_val is not None else "N/A"
+    with col_cp:
+        st.markdown(f"**{t['cp_engine']}**")
+        for key, label, unit in props_map:
+            val = None
+            if cp_result and "error" not in cp_result:
+                val = cp_result.get(key)
+            if val is not None:
+                st.metric(label=label, value=f"{val:.4f} {unit}")
+            else:
+                st.metric(label=label, value="N/A")
 
-        dev_label_text = "\u504f\u5dee" if is_zh else "Dev"
-        card = (
-            '<div class="prop-card-final">'
-            # ---- Name row ----
-            f'<div class="pcf-name">{name}</div>'
-            # ---- Body: two columns + deviation ----
-            '<div class="pcf-body">'
-            # PR column
-            '<div class="pcf-col pcf-col-pr">'
-            f'<div class="pcf-engine-tag pr-tag">{pr_label}</div>'
-            f'<div class="pcf-val-row"><span class="{dot_class} pcf-dot"></span>'
-            f'<span class="pcf-val pr-val-v2">{pr_s}</span></div>'
-            f'<div class="pcf-unit">{unit}</div>'
-            '</div>'
-            # Divider
-            '<div class="pcf-divider"></div>'
-            # CP column
-            '<div class="pcf-col pcf-col-cp">'
-            f'<div class="pcf-engine-tag cp-tag">{cp_label}</div>'
-            f'<div class="pcf-val-row"><span class="{dot_class} pcf-dot"></span>'
-            f'<span class="pcf-val cp-val-v2">{cp_s}</span></div>'
-            f'<div class="pcf-unit">{unit}</div>'
-            '</div>'
-            # Deviation (rightmost)
-            '<div class="pcf-dev">'
-            f'<div class="pcf-dev-label">{dev_label_text}</div>'
-            f'<span class="dev-badge-v2 {dev_class}"><span class="dev-dot"></span>{dev_str}</span>'
-            '</div>'
-            '</div>'
-            '</div>'
-        )
-        st.markdown(card, unsafe_allow_html=True)
-
-    st.markdown("---")
+    with col_dev:
+        st.markdown(f"**{t['deviation']}**")
+        for key, label, unit in props_map:
+            pr_val = cp_val = None
+            if pr_result and "error" not in pr_result:
+                pr_val = pr_result.get(key)
+            if cp_result and "error" not in cp_result:
+                cp_val = cp_result.get(key)
+            dev = calc_deviation(pr_val, cp_val)
+            if dev is not None:
+                st.metric(label=label, value=f"{dev:+.2f}%")
+            else:
+                st.metric(label=label, value="N/A")
 
     # Deviation explanation
     with st.expander(t["dev_expander_title"]):
@@ -857,16 +816,15 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     if cp_result and "error" in cp_result:
         st.warning(t["warn_coolprop"].format(cp_result["error"]))
 
-    # Z-factor
+    # Z-factor info
     if pr_result and "error" not in pr_result:
-        with st.expander("\U0001f4ca \u4e2d\u95f4\u53d8\u91cf (Z\u56e0\u5b50 / \u6b8b\u4f59\u7113)" if is_zh else "\U0001f4ca Intermediate Variables (Z-factor / Residual H)"):
-            zcols = st.columns(3)
-            for ci, (cap, key) in enumerate([("Z (vapor)", "Z_vapor"), ("Z (liquid)", "Z_liquid"), ("H_res (J/mol)", "H_res")]):
-                with zcols[ci]:
-                    st.caption(cap)
-                    val = pr_result.get(key, 0)
-                    fmt_spec = ".6f" if "Z" in key else ".2f"
-                    st.markdown(f'<span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;">{val:{fmt_spec}}</span>', unsafe_allow_html=True)
+        col_z1, col_z2, col_z3 = st.columns(3)
+        with col_z1:
+            st.metric("Z (vapor)", f'{pr_result.get("Z_vapor", 0):.6f}')
+        with col_z2:
+            st.metric("Z (liquid)", f'{pr_result.get("Z_liquid", 0):.6f}')
+        with col_z3:
+            st.metric("H_res (J/mol)", f'{pr_result.get("H_res", 0):.2f}')
 
     st.markdown("---")
 
@@ -875,205 +833,11 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     T_min = max(50.0, Tc - 200.0)
     T_max = min(2000.0, Tc + 300.0)
     T_range = np.linspace(T_min, T_max, 80)
-    lang_label = "\u751f\u6210\u66f2\u7ebf\u4e2d..." if is_zh else "Generating curves..."
+
+    lang_label = "\u751f\u6210\u66f2\u7ebf\u4e2d..." if st.session_state["lang"] == "zh" else "Generating curves..."
     with st.spinner(lang_label):
         fig = create_property_plots(fluid_info, P_pa, T_range, st.session_state["lang"])
     st.plotly_chart(fig, width='stretch')
-
-    # Export PDF
-    st.session_state["_fig"] = fig
-    st.session_state["_pr_result"] = pr_result
-    st.session_state["_cp_result"] = cp_result
-    st.session_state["_fluid_info"] = fluid_info
-    st.session_state["_P_pa"] = P_pa
-
-    if st.button(t.get("export_btn", "\U0001f4e5 \u5bfc\u51fa\u62a5\u544a (PDF)"), key="export_pdf"):
-        with st.spinner("\u751f\u6210\u62a5\u544a\u4e2d..." if is_zh else "Generating report..."):
-            pdf_bytes = export_report_pdf(pr_result, cp_result, fluid_info, P_pa, st.session_state["_fig"], st.session_state["lang"])
-        st.success(t.get("export_success", "\u2705 \u62a5\u544a\u5df2\u751f\u6210"))
-        from datetime import datetime
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        st.download_button(
-            label="\U0001f4e5 \u4e0b\u8f7d PDF" if is_zh else "\U0001f4e5 Download PDF",
-            data=pdf_bytes, file_name=f"ThermoCalc_Report_{ts}.pdf",
-            mime="application/pdf", key="dl_pdf"
-        )
-
-def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
-    """Generate a PDF report with results table and charts."""
-    import io, os
-    from datetime import datetime
-    from fpdf import FPDF
-
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
-    fluid_display = name_zh if lang == "zh" else name_en
-
-    # Try to use CJK font for Chinese; fall back to built-in for English
-    CJK_FONT_PATH = r"C:\Windows\Fonts\msyh.ttc"
-    use_cjk = lang == "zh" and os.path.exists(CJK_FONT_PATH)
-
-    class PDF(FPDF):
-        def header(self):
-            if use_cjk:
-                self.set_font("cjk", "B", 14)
-            else:
-                self.set_font("Helvetica", "B", 14)
-            self.set_text_color(30, 64, 175)
-            title = "ThermoCalc - \u70ed\u7269\u6027\u8ba1\u7b97\u62a5\u544a" if lang == "zh" else "ThermoCalc - Property Calculation Report"
-            self.cell(0, 10, title, align="C", new_x="LMARGIN", new_y="NEXT")
-            if use_cjk:
-                self.set_font("cjk", "", 9)
-            else:
-                self.set_font("Helvetica", "I", 9)
-            self.set_text_color(100)
-            self.cell(0, 6, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), align="C", new_x="LMARGIN", new_y="NEXT")
-            self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-            self.ln(4)
-
-        def footer(self):
-            self.set_y(-15)
-            self.set_font("Helvetica", "I", 8)
-            self.set_text_color(128)
-            self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
-
-    pdf = PDF()
-    if use_cjk:
-        pdf.add_font("cjk", "", CJK_FONT_PATH, uni=True)
-        pdf.add_font("cjk", "B", r"C:\Windows\Fonts\msyhbd.ttc", uni=True)
-    pdf.alias_nb_pages()
-    pdf.set_auto_page_break(auto=True, margin=20)
-    pdf.add_page()
-
-    def write_section(pdf, title, use_cjk):
-        if use_cjk:
-            pdf.set_font("cjk", "B", 12)
-        else:
-            pdf.set_font("Helvetica", "B", 12)
-        pdf.set_text_color(30, 64, 175)
-        pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
-
-    def write_body(pdf, text, use_cjk):
-        if use_cjk:
-            pdf.set_font("cjk", "", 10)
-        else:
-            pdf.set_font("Helvetica", "", 10)
-        pdf.set_text_color(50)
-        pdf.cell(0, 6, text, new_x="LMARGIN", new_y="NEXT")
-
-    # ---- Section 1 ----
-    s1 = "1. \u8ba1\u7b97\u53c2\u6570" if lang == "zh" else "1. Calculation Parameters"
-    write_section(pdf, s1, use_cjk)
-
-    info_lines = [
-        f"  Fluid: {fluid_display}  |  M = {M_gmol} g/mol",
-        f"  Tc = {Tc} K  |  Pc = {Pc} MPa  |  omega = {omega}",
-        f"  Pressure = {P_pa/1e6:.2f} MPa",
-    ]
-    for ln in info_lines:
-        write_body(pdf, ln, use_cjk)
-    pdf.ln(4)
-
-    # ---- Section 2: Results Table ----
-    s2 = "2. \u7269\u6027\u8ba1\u7b97\u7ed3\u679c" if lang == "zh" else "2. Property Results"
-    write_section(pdf, s2, use_cjk)
-
-    col_w = [45, 35, 35, 35, 25]
-    headers = (
-        ["\u7269\u6027", "PR\u65b9\u7a0b", "CoolProp", "\u5355\u4f4d", "\u504f\u5dee"]
-        if lang == "zh"
-        else ["Property", "PR EOS", "CoolProp", "Unit", "Deviation"]
-    )
-    if use_cjk:
-        pdf.set_font("cjk", "B", 9)
-    else:
-        pdf.set_font("Helvetica", "B", 9)
-    pdf.set_fill_color(30, 64, 175)
-    pdf.set_text_color(255)
-    for i, h in enumerate(headers):
-        pdf.cell(col_w[i], 7, h, border=1, fill=True, align="C")
-    pdf.ln()
-
-    props = [
-        ("density", "\u5bc6\u5ea6", "Density", "kg/m\\u00b3"),
-        ("cp", "\u5b9a\u538b\u6bd4\u70ed\u5bb9 Cp", "Cp", "kJ/(kg.K)"),
-        ("cv", "\u5b9a\u5bb9\u6bd4\u70ed\u5bb9 Cv", "Cv", "kJ/(kg.K)"),
-        ("thermal_conductivity", "\u5bfc\u70ed\u7cfb\u6570 \u03bb", "\u03bb", "W/(m.K)"),
-        ("viscosity", "\u52a8\u529b\u7c98\u5ea6 \u03bc", "\u03bc", "\u03bcPa.s"),
-    ]
-
-    if use_cjk:
-        pdf.set_font("cjk", "", 9)
-    else:
-        pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(50)
-    for key, zname, ename, unit in props:
-        name = zname if lang == "zh" else ename
-        pr_val = pr_result.get(key) if (pr_result and "error" not in pr_result) else None
-        cp_val = cp_result.get(key) if (cp_result and "error" not in cp_result) else None
-        pr_s = f"{pr_val:.4f}" if pr_val is not None else "N/A"
-        cp_s = f"{cp_val:.4f}" if cp_val is not None else "N/A"
-        if pr_val is not None and cp_val is not None and cp_val != 0:
-            dev = (pr_val - cp_val) / abs(cp_val) * 100
-            dev_s = f"{dev:+.2f}%"
-        else:
-            dev_s = "N/A"
-        pdf.cell(col_w[0], 6, name, border=1)
-        pdf.cell(col_w[1], 6, pr_s, border=1, align="R")
-        pdf.cell(col_w[2], 6, cp_s, border=1, align="R")
-        pdf.cell(col_w[3], 6, unit, border=1, align="C")
-        pdf.cell(col_w[4], 6, dev_s, border=1, align="C")
-        pdf.ln()
-
-    # Z-factor
-    if pr_result and "error" not in pr_result:
-        pdf.ln(2)
-        zlabel = "\u4e2d\u95f4\u53d8\u91cf" if lang == "zh" else "Intermediate Variables"
-        write_section(pdf, zlabel, use_cjk)
-        if use_cjk:
-            pdf.set_font("cjk", "", 9)
-        else:
-            pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(50)
-        for zl in [
-            f"  Z (vapor) = {pr_result.get('Z_vapor', 0):.6f}",
-            f"  Z (liquid) = {pr_result.get('Z_liquid', 0):.6f}",
-            f"  H_res = {pr_result.get('H_res', 0):.2f} J/mol",
-        ]:
-            pdf.cell(0, 6, zl, new_x="LMARGIN", new_y="NEXT")
-
-    # ---- Section 3: Charts ----
-    pdf.add_page()
-    s3 = "3. \u7269\u6027-\u6e29\u5ea6\u66f2\u7ebf\u56fe" if lang == "zh" else "3. Property-Temperature Curves"
-    write_section(pdf, s3, use_cjk)
-    pdf.ln(2)
-
-    try:
-        img_bytes = fig.to_image(format="png", width=1200, height=700, scale=2)
-        img_path = "__tmp_chart.png"
-        with open(img_path, "wb") as f:
-            f.write(img_bytes)
-        pdf.image(img_path, x=10, w=pdf.w - 20)
-        os.remove(img_path)
-    except Exception:
-        pdf.set_font("Helvetica", "I", 10)
-        pdf.set_text_color(200, 50, 50)
-        pdf.cell(0, 8, "(Chart image could not be rendered. Please view the web app for interactive charts.)", new_x="LMARGIN", new_y="NEXT")
-
-    # ---- Section 4: Disclaimer ----
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(128)
-    disc_en = "Note: PR EOS is a classical cubic equation of state. For highly polar substances, systematic deviations of 5-15% are expected. CoolProp values serve as reference benchmarks."
-    disc_zh = "\u6ce8\uff1aPR\u65b9\u7a0b\u4e3a\u7ecf\u5178\u7acb\u65b9\u578b\u72b6\u6001\u65b9\u7a0b\uff0c\u5bf9\u5f3a\u6781\u6027\u7269\u8d28\u5b58\u5728\u7ea65-15%\u7cfb\u7edf\u504f\u5dee\u3002CoolProp\u503c\u4f5c\u4e3a\u57fa\u51c6\u53c2\u8003\u3002"
-    disc = disc_zh if lang == "zh" else disc_en
-    if use_cjk:
-        pdf.set_font("cjk", "", 8)
-    pdf.multi_cell(0, 5, disc)
-
-    buf = io.BytesIO()
-    pdf.output(buf)
-    buf.seek(0)
-    return buf.getvalue()
 
 
 def render_validation_page(t):
@@ -1155,275 +919,17 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    # CSS (dark sci-tech + property cards)
+    # CSS
     st.markdown("""<style>
-    /* ============================================================
-       iOS Glassmorphism - Balanced Cards (v2.3)
-       ============================================================ */
-
-    .stApp {
-        background: linear-gradient(160deg, #0f0c29 0%, #1a1744 30%, #24243e 70%, #0f0c29 100%);
-        color: #e2e8f0; min-height: 100vh;
-    }
-
-    /* --- Sidebar --- */
-    section[data-testid="stSidebar"] {
-        background: rgba(20, 18, 50, 0.75) !important;
-        backdrop-filter: blur(40px) saturate(200%);
-        -webkit-backdrop-filter: blur(40px) saturate(200%);
-        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-        box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4);
-    }
-    section[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
-
-    /* --- Buttons --- */
-    .stButton > button {
-        background: rgba(255, 255, 255, 0.06) !important;
-        backdrop-filter: blur(12px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        color: #e2e8f0 !important; border-radius: 14px !important;
-        font-weight: 600 !important;
-        transition: all 0.30s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-    .stButton > button:hover {
-        background: rgba(56, 189, 248, 0.12) !important;
-        border-color: rgba(56, 189, 248, 0.6) !important;
-        box-shadow: 0 0 30px rgba(56, 189, 248, 0.22), 0 8px 25px rgba(0, 0, 0, 0.5);
-        transform: translateY(-2px) scale(1.01); color: #fff !important;
-    }
-    .stButton > button:active { transform: scale(0.97) !important; }
-
-    /* --- Inputs --- */
-    input, .stNumberInput input {
-        background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.10) !important;
-        color: #e2e8f0 !important; border-radius: 12px !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-    input:focus {
-        border-color: rgba(56, 189, 248, 0.5) !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.12) !important;
-        background: rgba(255, 255, 255, 0.08) !important;
-    }
-    .stSelectbox > div > div {
-        background: rgba(255, 255, 255, 0.05) !important; border-radius: 12px !important;
-        border: 1px solid rgba(255, 255, 255, 0.10) !important;
-    }
-    .stSlider > div > div > div > div { background: rgba(56, 189, 248, 0.35) !important; }
-
-    #MainMenu { visibility: hidden; } footer { visibility: hidden; }
-    header[data-testid="stHeader"] {
-        background: transparent !important; box-shadow: none !important; border-bottom: none !important;
-    }
-
-    /* ============================================================
-       PROPERTY CARD (balanced, ~150px height)
-       ============================================================ */
-    .prop-card-final {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        padding: 12px 20px 14px;
-        margin-bottom: 16px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.03);
-        transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-    .prop-card-final:hover {
-        transform: translateY(-4px);
-        border-color: rgba(56, 189, 248, 0.22);
-        background: rgba(255, 255, 255, 0.07);
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.40), 0 0 25px rgba(56, 189, 248, 0.04);
-    }
-
-    /* --- Card name (top row, subtle) --- */
-    .pcf-name {
-        font-size: 0.70rem;
-        text-transform: uppercase;
-        letter-spacing: 2.0px;
-        color: rgba(255, 255, 255, 0.38);
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-
-    /* --- Body: flex row of columns --- */
-    .pcf-body {
-        display: flex;
-        align-items: center;
-        gap: 0;
-    }
-
-    /* --- PR / CP columns (50% each) --- */
-    .pcf-col {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 4px 8px;
-    }
-
-    /* --- Engine tag --- */
-    .pcf-engine-tag {
-        font-size: 0.56rem;
-        text-transform: uppercase;
-        letter-spacing: 1.3px;
-        padding: 2px 9px;
-        border-radius: 7px;
-        font-weight: 600;
-        margin-bottom: 6px;
-    }
-    .pr-tag {
-        color: #c4b5fd;
-        background: rgba(167, 139, 250, 0.08);
-        border: 1px solid rgba(167, 139, 250, 0.14);
-    }
-    .cp-tag {
-        color: #67e8f9;
-        background: rgba(34, 211, 238, 0.08);
-        border: 1px solid rgba(34, 211, 238, 0.14);
-    }
-
-    /* --- Value row (dot + value) --- */
-    .pcf-val-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 2px;
-    }
-    .pcf-dot {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-        flex-shrink: 0;
-    }
-    .dot-green  { background: #6ee7b7; box-shadow: 0 0 8px rgba(110,231,183,0.45); }
-    .dot-yellow { background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.45); }
-    .dot-red    { background: #fb923c; box-shadow: 0 0 8px rgba(251,146,60,0.45); }
-    .dot-na     { background: rgba(255,255,255,0.18); }
-
-    .pcf-val {
-        font-size: 1.65rem;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
-        line-height: 1.1;
-    }
-    .pr-val-v2 {
-        background: linear-gradient(135deg, #c4b5fd, #a78bfa);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .cp-val-v2 {
-        background: linear-gradient(135deg, #67e8f9, #22d3ee);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    /* --- Unit --- */
-    .pcf-unit {
-        font-size: 0.64rem;
-        color: rgba(255, 255, 255, 0.28);
-        letter-spacing: 0.2px;
-    }
-
-    /* --- Vertical divider --- */
-    .pcf-divider {
-        width: 1px;
-        height: 65px;
-        background: linear-gradient(180deg, transparent, rgba(255,255,255,0.12), transparent);
-        flex-shrink: 0;
-        margin: 0 4px;
-    }
-
-    /* --- Deviation section (right side) --- */
-    .pcf-dev {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        min-width: 80px;
-        flex-shrink: 0;
-        padding-left: 4px;
-    }
-    .pcf-dev-label {
-        font-size: 0.58rem;
-        text-transform: uppercase;
-        letter-spacing: 1.4px;
-        color: rgba(255, 255, 255, 0.30);
-        font-weight: 600;
-    }
-
-    /* --- Deviation badges --- */
-    .dev-badge-v2 {
-        font-size: 1.2rem; font-weight: 700;
-        padding: 3px 12px; border-radius: 14px;
-        display: inline-flex; align-items: center; gap: 5px;
-        backdrop-filter: blur(8px);
-    }
-    .dev-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-    .dev-green-v2  { color: #6ee7b7; background: rgba(16, 185, 129, 0.10); border: 1px solid rgba(16,185,129,0.16); }
-    .dev-green-v2 .dev-dot { background: #6ee7b7; }
-    .dev-yellow-v2 { color: #fbbf24; background: rgba(245, 158, 11, 0.10); border: 1px solid rgba(245,158,11,0.16); }
-    .dev-yellow-v2 .dev-dot { background: #fbbf24; }
-    .dev-red-v2    { color: #fb923c; background: rgba(249, 115, 22, 0.10); border: 1px solid rgba(249,115,22,0.16); }
-    .dev-red-v2 .dev-dot { background: #fb923c; }
-    .dev-na-v2     { color: rgba(255,255,255,0.30); background: rgba(100,116,139,0.06); }
-
-    /* --- Status bar --- */
-    .status-bar {
-        display: flex; align-items: center; gap: 10px;
-        padding: 10px 14px; border-radius: 12px;
-        background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        margin-top: 14px; font-size: 0.73rem; color: rgba(255, 255, 255, 0.50);
-    }
-    .status-dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: #10b981; box-shadow: 0 0 12px #10b981;
-        animation: statusPulse 2s ease-in-out infinite;
-    }
-    @keyframes statusPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    /* --- Title --- */
-    .title-glow {
-        font-size: 1.7rem; font-weight: 800;
-        background: linear-gradient(135deg, #c4b5fd, #38bdf8, #67e8f9, #c4b5fd);
-        background-size: 300% 300%;
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: gradientShift 6s ease infinite; letter-spacing: -0.5px;
-    }
-    @keyframes gradientShift { 0%{background-position:0 50%} 50%{background-position:100% 50%} 100%{background-position:0 50%} }
-    .version-chip {
-        display: inline-block; font-size: 0.62rem; padding: 3px 12px; border-radius: 12px;
-        background: rgba(56, 189, 248, 0.10); backdrop-filter: blur(8px);
-        border: 1px solid rgba(56, 189, 248, 0.18); color: #38bdf8;
-        font-weight: 600; letter-spacing: 1.5px; vertical-align: middle; margin-left: 10px;
-    }
-
-    /* --- Expander --- */
-    .stExpander {
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 14px !important;
-        background: rgba(255,255,255,0.03) !important;
-        backdrop-filter: blur(8px);
-    }
-    .stExpander:hover { border-color: rgba(255,255,255,0.15) !important; }
-
-    /* --- Scrollbar --- */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
-
-    /* --- Fluid info line --- */
-    .fluid-info-line {
-        font-size: 0.76rem;
-        color: rgba(255, 255, 255, 0.38);
-        margin-bottom: 4px;
-    }
+    .stApp { background: linear-gradient(145deg, #0b1120 0%, #15203a 100%); color: #e2e8f0; }
+    section[data-testid="stSidebar"] { background: rgba(20, 30, 50, 0.85) !important; backdrop-filter: blur(10px); border-right: 1px solid rgba(255,255,255,0.08); }
+    .stButton > button { background: linear-gradient(135deg, #1e293b, #0f172a) !important; border: 1px solid #38bdf8 !important; color: white !important; border-radius: 8px !important; width: 100%; transition: all 0.3s ease !important; }
+    .stButton > button:hover { background: #38bdf8 !important; color: #0b1120 !important; box-shadow: 0 0 25px rgba(56, 189, 248, 0.5); }
+    input { background-color: rgba(255,255,255,0.05) !important; border: 1px solid #334155 !important; color: white !important; border-radius: 8px !important; }
+    .stSelectbox > div > div { background-color: rgba(255,255,255,0.05) !important; border-radius: 8px !important; }
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; border-bottom: none !important; }
     </style>""", unsafe_allow_html=True)
+
     # Session state
     for k, v in {"lang": "zh", "calc_done": False, "pr_result": None, "cp_result": None,
                   "T_input": 300.0, "P_input": 1.0, "fluid_idx": 0,
@@ -1453,63 +959,55 @@ def main():
         st.markdown("---")
 
         # ---- INPUT WIDGETS (always shown) ----
-        with st.form("calc_form", border=False):
-            fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
+        fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
 
-            # Temperature: slider + number (synced via session_state, no immediate rerun)
-            T_input = st.slider(
-                f'{t["temperature"]} ({t["unit_temp"]})',
-                min_value=200.0, max_value=600.0,
-                value=st.session_state["T_input"], step=1.0,
-                key="T_input"
-            )
-            P_input = st.slider(
-                f'{t["pressure"]} ({t["unit_press"]})',
-                min_value=0.1, max_value=10.0,
-                value=st.session_state["P_input"], step=0.1,
-                key="P_input"
-            )
+        T_input = st.number_input(
+            f'{t["temperature"]} ({t["unit_temp"]})',
+            min_value=50.0, max_value=2000.0,
+            value=st.session_state["T_input"], step=1.0, format="%.1f",
+            key="T_num"
+        )
+        P_input = st.number_input(
+            f'{t["pressure"]} ({t["unit_press"]})',
+            min_value=0.01, max_value=100.0,
+            value=st.session_state["P_input"], step=0.1, format="%.2f",
+            key="P_num"
+        )
+        fluid_choice = st.selectbox(
+            t["fluid_select"], fluid_options,
+            index=st.session_state["fluid_idx"], key="fluid_sel"
+        )
 
-            fluid_choice = st.selectbox(
-                t["fluid_select"], fluid_options,
-                index=st.session_state["fluid_idx"], key="fluid_sel"
-            )
+        if st.button(t["calc_button"], width='stretch', key="calc_btn"):
+            st.session_state["T_input"] = T_input
+            st.session_state["P_input"] = P_input
+            for i, item in enumerate(FLUID_DATABASE):
+                if item[0 if st.session_state["lang"] == "zh" else 1] == fluid_choice:
+                    st.session_state["fluid_idx"] = i
+                    break
+            fluid_info = FLUID_DATABASE[st.session_state["fluid_idx"]]
+            try:
+                pr_res, cp_res, rw = run_calculation(T_input, P_input, fluid_info)
+                st.session_state["pr_result"] = pr_res
+                st.session_state["cp_result"] = cp_res
+                st.session_state["fluid_info"] = fluid_info
+                st.session_state["P_pa"] = P_input * 1e6
+                st.session_state["range_warning"] = rw
+                st.session_state["calc_done"] = True
+            except Exception as e:
+                st.session_state["pr_result"] = {"error": str(e)}
+                st.session_state["cp_result"] = {"error": str(e)}
+                st.session_state["calc_done"] = True
+            st.rerun()
 
-            submitted = st.form_submit_button(t["calc_button"], width='stretch')
-
-            if submitted:
-                for i, item in enumerate(FLUID_DATABASE):
-                    if item[0 if st.session_state["lang"] == "zh" else 1] == fluid_choice:
-                        st.session_state["fluid_idx"] = i
-                        break
-                fluid_info = FLUID_DATABASE[st.session_state["fluid_idx"]]
-                try:
-                    pr_res, cp_res, rw = run_calculation(T_input, P_input, fluid_info)
-                    st.session_state["pr_result"] = pr_res
-                    st.session_state["cp_result"] = cp_res
-                    st.session_state["fluid_info"] = fluid_info
-                    st.session_state["P_pa"] = P_input * 1e6
-                    st.session_state["range_warning"] = rw
-                    st.session_state["calc_done"] = True
-                except Exception as e:
-                    st.session_state["pr_result"] = {"error": str(e)}
-                    st.session_state["cp_result"] = {"error": str(e)}
-                    st.session_state["calc_done"] = True
-                st.rerun()
+        st.markdown("---")
 
         with st.expander(t["scope_title"]):
-            st.info(t["scope_text"], icon="\U0001f4cb")
-        # Engine status indicator
-        st.markdown(
-            '<div class="status-bar">'
-            '<span class="status-dot"></span> '
-            + ("\U0001f7e2 \u5f15\u64ce\u5c31\u7eea | <span style=\"background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;\">PR + CoolProp</span>" if st.session_state["lang"] == "zh" else "\U0001f7e2 Engines Ready | <span style=\"background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;\">PR + CoolProp</span>")
-            + '</div>',
-            unsafe_allow_html=True,
-        )
+            st.info(t["scope_text"], icon="📋")
 
 
     
+
     if not st.session_state["calc_done"]:
         col1, col2 = st.columns([2, 1])
         with col1:
@@ -1518,7 +1016,7 @@ def main():
             with st.expander(t["about_title"]):
                 st.markdown(t["about_text"], unsafe_allow_html=True)
         st.markdown("---")
-        st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
+        st.caption("\U0001f9ea ThermoCalc v1.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
         return
 
     if st.session_state.get("range_warning") == "range":
@@ -1532,7 +1030,7 @@ def main():
         st.code(traceback.format_exc())
 
     st.markdown("---")
-    st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
+    st.caption("\U0001f9ea ThermoCalc v1.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
 
 
 if __name__ == "__main__":
