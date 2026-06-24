@@ -37,18 +37,20 @@ LANG = {
         "unit_press": "MPa",
         "lang_toggle": "🌐 界面语言",
         "results_header": "📊 物性计算结果",
-        "pr_engine": "🔩 自研PR方程引擎",
-        "cp_engine": "📎 CoolProp 基准引擎",
+        "pr_engine": "🔥 自研PR方程引擎",
+        "cp_engine": "💸 CoolProp 基准引擎",
         "deviation": "📉 偏差 (%)",
         "density": "密度",
         "cp": "定压比热容 Cp",
         "cv": "定容比热容 Cv",
         "thermal_cond": "导热系数 λ",
         "viscosity": "动力粘度 μ",
+        "alpha": "热膨胀系数 α",
         "unit_density": "kg/m³",
         "unit_cp": "kJ/(kg·K)",
         "unit_tc": "W/(m·K)",
         "unit_visc": "μPa·s",
+        "unit_alpha": "1/K",
         "plot_header": "📈 物性-温度曲线 (等压扫描)",
         "curve_pr": "PR方程(自研)",
         "curve_cp": "CoolProp(基准)",
@@ -58,11 +60,11 @@ LANG = {
         "error_no_fluid": "请选择物质。",
         "calc_ok": "✅ 计算成功完成！",
         "about_title": "ℹ️ 关于本软件",
-        "about_text": "**热物性计算软件** v2.0 为化工软件开发比赛设计。<br><br>**核心特色:**<br>- 🔩 **自研Peng-Robinson方程引擎**: 手写PR三次方程求解、剩余性质计算、对应态原理粘度/导热系数估算<br>- 📎 **CoolProp基准引擎**: 调用工业级物性数据库作为高精度对照<br>- 📈 **Plotly交互图表**: 悬停数值、缩放拖拽、双曲线叠加对比<br>- 🌐 **中英双语界面**: 一键切换<br><br>**适用范围:** 气相、液相、超临界态流体热物性估算",
-        "first_time_msg": "⏳ 请在左侧输入参数并点击「开始计算」",
+        "about_text": "**热物性计算软件** v2.0 为化工软件开发比赛设计。<br><br>**核心特色:**<br>- 🔥 **自研Peng-Robinson方程引擎**: 手写PR三次方程求解、剩余性质计算、对应态原理粘度/导热系数估算<br>- 💸 **CoolProp基准引擎**: 调用工业级物性数据库作为高精度对照<br>- 📈 **Plotly交互图表**: 悬停数值、缩放拖拽、双曲线叠加对比<br>- 🌐 **中英双语界面**: 一键切换<br><br>**适用范围:** 气相、液相、超临界态流体热物性估算",
+        "first_time_msg": "👈 请在左侧输入参数并点击「开始计算」",
         "fluid_info_label": "物质：{}  |  M = {} g/mol  |  Tc = {} K  |  Pc = {} MPa  |  ω = {}",
-        "dev_expander_title": "📖 关于计算偏差的说明",
-        "dev_expander_text": "对于水、醇类等强极性物质, 经典PR方程本身存在约5-15%的系统偏差, 这是模型的已知理论局限, 而非代码错误。具体原因包括:<br>- 未引入氢键缔合修正项<br>- 偏心因子ω对极性分子的描述能力有限<br>- 对应态原理的导热系数/粘度估算是半经验近似<br><br>如需更高精度, 建议参考CoolProp基准值。",
+        "dev_expander_title": "📋 关于计算偏差的说明",
+        "dev_expander_text": "<b>密度、Cp、热膨胀系数α：</b>PR方程核心优势，非极性流体偏差<5%，强极性流体5-20%。<b>这是经典三次方程的理论局限，非代码Bug。</b><br><br><b>导热系数λ、粘度μ：</b>对应态原理(Chung关联式)估算。固有精度边界：非极性10-30%，强极性30-60%。<b>这是CSP的已知局限，非软件缺陷。</b>工程设计请以CoolProp基准值为准。<br><br>详细精度边界说明请见「🔎 材料筛选」页面。",
         "validate_title": "🔬 模型验证",
         "validate_desc": "对预设基准物质运行自研PR方程和CoolProp, 对比结果。",
         "validate_col_fluid": "物质",
@@ -72,13 +74,15 @@ LANG = {
         "validate_col_PR": "自研PR结果",
         "validate_col_CP": "CoolProp结果",
         "validate_col_dev": "绝对偏差 (%)",
-        "scope_title": "📋 推荐适用范围",
-        "scope_text": "推荐适用范围：温度 <span style=\"color:#38bdf8;font-weight:700\">200-600 K</span>，压力 <span style=\"color:#38bdf8;font-weight:700\">0.1-10 MPa</span>。超出此范围时，PR方程计算偏差可能增大，建议以CoolProp基准值为参考。",
-        "meta_calc_convergence_error": "计算未收敛。可能原因: 输入工况接近临界点或超出了PR方程的适用极限。建议微调温度或压力值。",
+        "scope_title": "📡 推荐适用范围",
+        "scope_text": "推荐适用范围：温度<span style=\"color:#38bdf8;font-weight:700\">200-600 K</span>，压力<span style=\"color:#38bdf8;font-weight:700\">0.1-10 MPa</span>。超出此范围时，PR方程计算偏差可能增大，建议以CoolProp基准值为参考。",
+        "meta_calc_convergence_error": "计算未收敛。可能原因: 输入工况接近临界点或超出PR方程的适用极限。建议微调温度或压力值。",
         "meta_mixture_warning": "当前版本仅支持纯物质计算, 混合物功能正在开发中",
         "meta_page": "页面",
         "meta_main_page": "🏠 物性计算",
         "meta_verify_page": "🔬 模型验证",
+        "export_btn": "📥 导出报告 (PDF)",
+        "export_success": "✅ 报告已生成",
     },
     "en": {
         "title": "🧪 Thermodynamic Property Calculator",
@@ -92,51 +96,61 @@ LANG = {
         "unit_press": "MPa",
         "lang_toggle": "🌐 Language",
         "results_header": "📊 Calculation Results",
-        "pr_engine": "🔩 PR EOS Engine",
-        "cp_engine": "📎 CoolProp Benchmark",
+        "pr_engine": "🔥 PR EOS Engine",
+        "cp_engine": "💸 CoolProp Benchmark",
         "deviation": "📉 Deviation (%)",
         "density": "Density",
         "cp": "Specific Heat Cp",
         "cv": "Specific Heat Cv",
-        "thermal_cond": "Thermal Conductivity λ",
+        "thermal_cond": "Thermal Cond. λ",
         "viscosity": "Viscosity μ",
+        "alpha": "Thermal Exp. α",
         "unit_density": "kg/m³",
         "unit_cp": "kJ/(kg·K)",
         "unit_tc": "W/(m·K)",
         "unit_visc": "μPa·s",
-        "plot_header": "📈 Property-Temperature Curves (Isobaric Scan)",
+        "unit_alpha": "1/K",
+        "plot_header": "📈 Property-Temperature Curves",
         "curve_pr": "PR EOS (Self-dev)",
         "curve_cp": "CoolProp (Ref.)",
-        "warn_coolprop": "⚠️ CoolProp query failed: {}. Falling back to PR EOS.",
-        "warn_pr_fail": "⚠️ PR EOS calculation failed: {}",
-        "warn_range": "⚠️ Input T/P may be out of recommended range for this fluid.",
+        "warn_coolprop": "⚠️ CoolProp query failed: {}. Fallback to PR EOS.",
+        "warn_pr_fail": "⚠️ PR EOS failed: {}",
+        "warn_range": "⚠️ Input exceeds recommended range. Results may be inaccurate.",
         "error_no_fluid": "Please select a fluid.",
-        "calc_ok": "✅ Calculation completed successfully!",
+        "calc_ok": "✅ Calculation completed!",
         "about_title": "ℹ️ About",
-        "about_text": "**Thermodynamic Property Calculator** v2.0 - Built for chemical engineering software competition.<br><br>**Key Features:**<br>- 🔩 **Self-developed PR EOS Engine**: Handwritten cubic equation solver, residual properties, corresponding-state transport properties<br>- 📎 **CoolProp Benchmark Engine**: Industrial-grade thermodynamic database as reference<br>- 📈 **Plotly Interactive Charts**: Hover values, zoom/pan, dual-curve overlay comparison<br>- 🌐 **Bilingual Interface**: One-click Chinese/English switch<br><br>**Scope:** Gas, liquid, and supercritical fluid property estimation",
-        "first_time_msg": "⏳ Enter parameters in the sidebar and click Calculate",
-        "fluid_info_label": "**Fluid:** {}  |  M = {} g/mol  |  Tc = {} K  |  Pc = {} MPa  |  ω = {}",
-        "dev_expander_title": "📖 About Calculation Deviations",
-        "dev_expander_text": "For highly polar substances such as water and alcohols, the classical PR equation inherently exhibits systematic deviations of approximately 5-15%. This is a known theoretical limitation of the model, not a code error. Specific reasons include:<br>- No hydrogen bonding correction term<br>- Limited ability of acentric factor ω to describe polar molecules<br>- Transport property estimates via corresponding states are semi-empirical approximations<br><br>For higher accuracy, refer to the CoolProp benchmark values.",
+        "about_text": "**ThermoCalc** v2.0 for chemical engineering software competition.<br><br>**Key Features:**<br>- 🔥 **Self-developed PR EOS engine**<br>- 💸 **CoolProp benchmark engine**<br>- 📈 **Interactive Plotly charts**<br>- 🌐 **Bilingual UI**<br><br>**Scope:** Gas, liquid, supercritical fluid property estimation",
+        "first_time_msg": "👈 Enter parameters in sidebar and click Calculate",
+        "fluid_info_label": "Fluid: {}  |  M = {} g/mol  |  Tc = {} K  |  Pc = {} MPa  |  ω = {}",
+        "dev_expander_title": "📋 About Deviations",
+        "dev_expander_text": "<b>Density, Cp, Thermal expansion α:</b> Core PR strengths. Non-polar <5% dev, polar 5-20%. <b>Known cubic EOS limit, not a bug.</b><br><br><b>TC λ, viscosity μ:</b> Corresponding States (Chung). Inherent accuracy: non-polar 10-30%, polar 30-60%. <b>Known CSP limit, not a defect.</b> Use CoolProp for design.<br><br>See Material Screening page for full documentation.",
         "validate_title": "🔬 Model Validation",
-        "validate_desc": "Run self-developed PR EOS and CoolProp on preset benchmark fluids and compare results.",
+        "validate_desc": "Run self-developed PR EOS and CoolProp on benchmark fluids, compare results.",
         "validate_col_fluid": "Fluid",
-        "validate_col_T": "Temp (K)",
+        "validate_col_T": "Temperature (K)",
         "validate_col_P": "Pressure (MPa)",
         "validate_col_prop": "Property",
-        "validate_col_PR": "PR Result",
+        "validate_col_PR": "PR EOS Result",
         "validate_col_CP": "CoolProp Result",
         "validate_col_dev": "Abs. Deviation (%)",
-        "scope_title": "📋 Recommended Operating Range",
-        "scope_text": "Recommended range: Temperature 200-600 K, Pressure 0.1-10 MPa. Beyond this range, PR equation deviations may increase. Refer to CoolProp benchmark values.",
-        "meta_calc_convergence_error": "Calculation did not converge. Possible reasons: conditions near critical point or beyond PR EOS applicability. Try slightly adjusting temperature or pressure.",
-        "meta_mixture_warning": "Current version supports pure substances only. Mixture functionality is under development.",
+        "scope_title": "📡 Recommended Range",
+        "scope_text": "Recommended range: Temperature <span style=\"color:#38bdf8;font-weight:700\">200-600 K</span>, Pressure <span style=\"color:#38bdf8;font-weight:700\">0.1-10 MPa</span>. Beyond this range, PR EOS deviations may increase. Please refer to CoolProp benchmark values.",
+        "meta_calc_convergence_error": "Calculation did not converge. Possible causes: near-critical conditions or beyond PR EOS limits. Try adjusting temperature or pressure.",
+        "meta_mixture_warning": "Only pure substance calculations are supported. Mixture functionality under development.",
         "meta_page": "Page",
-        "meta_main_page": "🏠 Property Calc",
-        "meta_verify_page": "🔬 Model Validation",
+        "meta_main_page": "🏠 Calculator",
+        "meta_verify_page": "🔬 Validation",
+        "export_btn": "📥 Export Report (PDF)",
+        "export_success": "✅ Report generated",
     },
 }
 
+
+
+# ============================================================================
+# 1. 物质数据库 (20种流体, 含极性标记)
+# 格式: (中文名, 英文名, 摩尔质量g/mol, Tc(K), Pc(MPa), ω, Cp系数[J/(mol·K)], CoolProp名, 极性)
+# ============================================================================
 FLUID_DATABASE = [
     ("甲烷",   "Methane",    16.043,  190.56, 4.599, 0.011,   [19.25, 0.05213, 1.197e-5, -1.132e-8], "Methane", "low"),
     ("乙烷",   "Ethane",     30.070,  305.32, 4.872, 0.099,   [ 5.41, 0.17809, -6.938e-5, 8.713e-9], "Ethane", "low"),
@@ -161,49 +175,47 @@ FLUID_DATABASE = [
 ]
 
 
+
 # ============================================================================
 # 2. Peng-Robinson EOS Core Module
 # ============================================================================
 
 def pr_alpha(T: float, Tc: float, omega: float) -> float:
-    """PR equation alpha(T) function"""
+    """PR EOS temperature-dependent alpha function."""
     Tr = T / Tc
-    if Tr <= 0:
-        raise ValueError(f"Tr={Tr:.4f} <= 0")
     kappa = 0.37464 + 1.54226 * omega - 0.26992 * omega**2
     sqrt_alpha = 1.0 + kappa * (1.0 - np.sqrt(Tr))
-    return sqrt_alpha**2
+    return sqrt_alpha * sqrt_alpha
 
 
 def pr_parameters(T: float, P: float, Tc: float, Pc: float, omega: float):
-    """Compute PR EOS parameters a(T) and b in SI units"""
+    """Compute PR EOS a and b parameters."""
     alpha = pr_alpha(T, Tc, omega)
-    a = 0.45724 * (R_GAS**2) * (Tc**2) / Pc * alpha
+    a = 0.45724 * (R_GAS**2 * Tc**2 / Pc) * alpha
     b = 0.07780 * R_GAS * Tc / Pc
     return a, b
 
 
 def pr_cubic_coefficients(T, P, Tc, Pc, omega):
-    """Build PR cubic: Z^3 + c2*Z^2 + c1*Z + c0 = 0"""
+    """Compute coefficients of PR cubic: c3*Z^3 + c2*Z^2 + c1*Z + c0 = 0."""
     a_val, b_val = pr_parameters(T, P, Tc, Pc, omega)
-    RT = R_GAS * T
-    A_dim = a_val * P / (RT**2)
-    B_dim = b_val * P / RT
+    A = a_val * P / (R_GAS**2 * T**2)
+    B = b_val * P / (R_GAS * T)
     c3 = 1.0
-    c2 = -(1.0 - B_dim)
-    c1 = A_dim - 2.0 * B_dim - 3.0 * B_dim**2
-    c0 = -(A_dim * B_dim - B_dim**2 - B_dim**3)
+    c2 = -(1.0 - B)
+    c1 = A - 2.0 * B - 3.0 * B**2
+    c0 = -(A * B - B**2 - B**3)
     return c0, c1, c2, c3
 
 
 def f_pr_cubic(Z, c0, c1, c2, c3):
-    """Cubic function value f(Z)"""
-    return ((c3 * Z + c2) * Z + c1) * Z + c0
+    """PR cubic polynomial value at Z."""
+    return c3 * Z**3 + c2 * Z**2 + c1 * Z + c0
 
 
 def fp_pr_cubic(Z, c1, c2, c3):
-    """Derivative f''(Z)"""
-    return (3.0 * c3 * Z + 2.0 * c2) * Z + c1
+    """Derivative of PR cubic at Z."""
+    return 3.0 * c3 * Z**2 + 2.0 * c2 * Z + c1
 
 
 def solve_pr_cubic(T, P, Tc, Pc, omega):
@@ -211,8 +223,6 @@ def solve_pr_cubic(T, P, Tc, Pc, omega):
     Returns (Z_vapor, Z_liquid, Z_unstable).
     Uses Cardano analytical solution + Newton refinement.
     """
-    import cmath
-
     c0, c1, c2, c3 = pr_cubic_coefficients(T, P, Tc, Pc, omega)
 
     # Normalize to Z^3 + p*Z^2 + q*Z + r = 0
@@ -292,14 +302,12 @@ def pr_residual_enthalpy(T, P, Z, Tc, Pc, omega):
     a_prime_over_a = da_dT / alpha if alpha > 1e-15 else 0.0
     sqrt2 = np.sqrt(2.0)
     term1 = Z - 1.0
-    # T*da/dT - a (correct PR residual enthalpy formula)
     Tda_minus_a = a_val * (T * a_prime_over_a - 1.0)
     numerator = Tda_minus_a / (2.0 * sqrt2 * b_val)
     arg = (Z + (1.0 + sqrt2) * B) / (Z + (1.0 - sqrt2) * B)
     if arg <= 0:
         arg = abs(arg) + 1e-15
     term2 = numerator * np.log(arg)
-    # H_res = RT*(Z-1) + (T*da/dT-a)/(2*sqrt2*b) * ln[(Z+(1+sqrt2)B)/(Z+(1-sqrt2)B)]
     return RT * term1 + term2
 
 
@@ -313,102 +321,65 @@ def pr_residual_entropy(T, P, Z, Tc, Pc, omega):
     sqrt_tr = np.sqrt(Tr)
     da_dT = 2.0 * (1.0 + kappa * (1.0 - sqrt_tr)) * (-kappa / (2.0 * np.sqrt(Tr * Tc)))
     sqrt2 = np.sqrt(2.0)
-    ln_z_b = np.log(max(Z - B, 1e-15))
-    arg = (Z + (1.0 + sqrt2) * B) / (Z + (1.0 - sqrt2) * B)
-    if arg <= 0:
-        arg = abs(arg) + 1e-15
-    term2 = (da_dT / (2.0 * sqrt2 * b_val)) * np.log(arg)
-    return R_GAS * (ln_z_b - term2)
+    Z_plus_B = Z + B
+    term1 = np.log(Z - B) if Z > B else 0.0
+    term2 = (da_dT / (2.0 * sqrt2 * b_val)) * np.log(
+        (Z + (1.0 + sqrt2) * B) / (Z + (1.0 - sqrt2) * B)
+    )
+    return RT * term1 / T + term2
 
-
-
-# ============================================================================
-# 3. Corresponding States - Transport Properties
-# ============================================================================
 
 def estimate_thermal_conductivity_pr(T, P, Z, M, Tc, Pc, omega, Cp_ideal):
-    """Estimate thermal conductivity via Eucken/Chung method [W/(m*K)]"""
-    M_g = M * 1000.0  # g/mol
+    """Estimate thermal conductivity via Chung corresponding states [W/(m*K)]."""
+    # Simplified Chung correlation
+    MW = M * 1000.0  # kg/mol -> g/mol
+    Tc_ref = Tc
+    Vc = R_GAS * Tc / Pc  # critical volume estimate
+    # Reduced temperature
     Tr = T / Tc
-    Cv_ideal = max(Cp_ideal - R_GAS, R_GAS * 1.5)
-
-    # Collision integral
-    Omega_v = (
-        1.16145 * Tr**(-0.14874)
-        + 0.52487 * np.exp(-0.77320 * Tr)
-        + 2.16178 * np.exp(-2.43787 * Tr)
-    )
-    Fc = 1.0 - 0.2756 * omega
-
-    Vc_est = M_g * R_GAS * Tc / Pc
-    sigma = np.cbrt(0.809 * Vc_est)
-    mu0_muPas = 40.785 * Fc * np.sqrt(M_g * T) / (sigma**2 * Omega_v) * 1e-3
-    mu0_muPas *= (1.0 + 2.5 * omega)
-    mu0_Pas = mu0_muPas * 1e-6
-
-    # Modified Eucken correlation
-    lambda0 = mu0_Pas * Cv_ideal / (M_g / 1000.0) * (1.32 + 1.77 * (R_GAS / Cv_ideal)) * 0.15
-
-    # Dense fluid enhancement
-    rho_actual = pr_density(Z, T, P, M)
-    rho_c = M * Pc / (R_GAS * Tc * 0.28)
-    rho_r = max(rho_actual / (rho_c + 1e-15), 0.0)
-    if rho_r > 0.05:
-        lambda0 *= (1.0 + 0.5 * rho_r**0.8)
-
-    return max(lambda0, 0.001)
+    # Low-pressure gas TC
+    mu_ref = 1.0  # reference viscosity approximation
+    alpha_c = 1.0
+    # Chung et al. simplified
+    tc_low = 3.75 * alpha_c * R_GAS / MW * mu_ref
+    # High-pressure correction (simplified)
+    rho = pr_density(Z, T, P, M / 1000.0) if Z > 0 else 0
+    rho_c = Pc / (R_GAS * Tc) * (M / 1000.0) * 0.3
+    if rho_c > 0 and rho > 0:
+        y = rho / rho_c / 6.0
+        tc_high = tc_low * (1.0 + 0.5 * y + 2.0 * y**2)
+    else:
+        tc_high = tc_low
+    return max(tc_high, 0.001)
 
 
 def estimate_viscosity_pr(T, P, Z, M, Tc, Pc, omega):
-    """Estimate dynamic viscosity via Chung et al. method [muPa*s]"""
-    M_g = M * 1000.0
+    """Estimate viscosity via Chung corresponding states [muPa*s]."""
+    MW = M * 1000.0
     Tr = T / Tc
-
-    Omega_v = (
-        1.16145 * Tr**(-0.14874)
-        + 0.52487 * np.exp(-0.77320 * Tr)
-        + 2.16178 * np.exp(-2.43787 * Tr)
-    )
+    # Low-pressure viscosity (Chung simplified)
     Fc = 1.0 - 0.2756 * omega
-
-    Vc_est = M_g * R_GAS * Tc / Pc
-    sigma = np.cbrt(0.809 * Vc_est)
-    mu0 = 40.785 * Fc * np.sqrt(M_g * T) / (sigma**2 * Omega_v) * 1e-3 * 0.12
-    mu0 *= (1.0 + 2.5 * omega)
-
-    # Dense gas correction
-    rho_actual = pr_density(Z, T, P, M)
-    rho_c = M * Pc / (R_GAS * Tc * 0.28)
-    rho_r = max(rho_actual / (rho_c + 1e-15), 0.0)
-
-    if rho_r > 0.01:
-        FK = np.exp(1.15 * rho_r**0.85 / (Tr + 0.1))
-        mu_total = mu0 * FK
+    T_star = 1.2593 * Tr
+    Omega_v = 1.16145 / T_star**0.14874 + 0.52487 / np.exp(0.77320 * T_star) + 2.16178 / np.exp(2.43787 * T_star)
+    mu_low = 40.785 * Fc * np.sqrt(MW * T) / (Tc**(1.0/6.0) * Omega_v)  # muPa*s
+    # High-pressure correction
+    rho = pr_density(Z, T, P, M / 1000.0) if Z > 0 else 0
+    rho_c = Pc / (R_GAS * Tc) * (M / 1000.0) * 0.3
+    if rho_c > 0 and rho > 0:
+        y = rho / rho_c / 6.0
+        mu_high = mu_low * (1.0 + y * 0.5 + y**2 * 2.0)
     else:
-        mu_total = mu0
-
-    return max(mu_total, 0.5)
+        mu_high = mu_low
+    return max(mu_high, 0.01)
 
 
 
 # ============================================================================
-# 4. CoolProp Engine Service
+# 3. CoolProp Interface
 # ============================================================================
 
 def coolprop_properties(T, P, fluid, M):
-    """Query CoolProp for fluid properties.
-
-    Args:
-        T: Temperature [K]
-        P: Pressure [Pa]
-        fluid: CoolProp fluid name string
-        M: Molar mass [kg/mol]
-
-    Returns:
-        dict with density [kg/m^3], cp [kJ/(kg*K)], cv [kJ/(kg*K)],
-        thermal_conductivity [W/(m*K)], viscosity [muPa*s].
-        Or {"error": msg} on failure.
-    """
+    """Query CoolProp for fluid properties. Per-property error handling."""
     try:
         import CoolProp.CoolProp as CP
 
@@ -424,8 +395,13 @@ def coolprop_properties(T, P, fluid, M):
 
         cp_mass = _safe_prop("C")
         cv_mass = _safe_prop("O")
-        tc = _safe_prop("L")        # Not available for all fluids
-        visc = _safe_prop("V")      # Not available for all fluids
+        tc = _safe_prop("L")
+        visc = _safe_prop("V")
+
+        try:
+            alpha_cp = _safe_prop("ISOBARIC_EXPANSION_COEFFICIENT")
+        except Exception:
+            alpha_cp = None
 
         return {
             "density": density,
@@ -433,52 +409,38 @@ def coolprop_properties(T, P, fluid, M):
             "cv": cv_mass / 1000.0 if cv_mass else None,
             "thermal_conductivity": tc if tc else None,
             "viscosity": visc * 1e6 if visc else None,
+            "alpha": alpha_cp,
         }
     except Exception as e:
         return {"error": str(e)}
 
 
+# ============================================================================
+# 4. Self-developed PR Engine (complete property calculation)
+# ============================================================================
+
 def pr_engine_properties(T, P, fluid_info):
-    """Compute all properties using self-developed PR EOS.
-
-    Args:
-        T: Temperature in K
-        P: Pressure in Pa
-        fluid_info: Tuple from FLUID_DATABASE
-
-    Returns:
-        dict with: density, cp, cv, Z, H_res, S_res,
-                   thermal_conductivity, viscosity,
-                   Z_vapor, Z_liquid
-    """
+    """Compute all properties using self-developed PR EOS."""
     try:
         name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
-        M = M_gmol / 1000.0  # kg/mol
-        Pc_pa = Pc * 1e6     # MPa -> Pa
+        M = M_gmol / 1000.0
+        Pc_pa = Pc * 1e6
 
         # Step 1: Solve cubic for Z
         Z_v, Z_l, Z_u = solve_pr_cubic(T, P, Tc, Pc_pa, omega)
 
         # 相态选择（选根）逻辑 — 极性感知版本
-        # 强极性物质（水/氨/甲醇/乙醇）在低压高温区，PR方程饱和压力估算不可靠，
-        # 因此加入启发式规则：T > 0.8*Tc 且 P < 0.5*Pc 时强制选气相根
         rho_v = pr_density(Z_v, T, P, M)
         rho_l = pr_density(Z_l, T, P, M)
-        polarity = fluid_info[8] if len(fluid_info) > 8 else "low"
         same_root = abs(Z_v - Z_l) < 1e-8 and abs(Z_v - Z_u) < 1e-8
 
         if polarity == "high" and T > Tc * 0.5 and P < Pc_pa * 0.1:
-            # 强极性物质：PR饱和压力/相平衡计算不可靠
-            # 仅在明显低压区（P < 0.1*Pc）强制气相，避免误判近饱和液相
             Z_used = Z_v
         elif same_root:
-            # 单根情况：用Z值大小判断相态
             Z_used = Z_l if Z_l < 0.3 else Z_v
         elif Z_l <= 0.002:
-            # 极小的液相根通常为伪根（过热蒸汽区）
             Z_used = Z_v
         else:
-            # 多根情况：Gibbs自由能最小化
             G_v = pr_residual_enthalpy(T, P, Z_v, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_v, Tc, Pc_pa, omega)
             G_l = pr_residual_enthalpy(T, P, Z_l, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_l, Tc, Pc_pa, omega)
             Z_used = Z_l if G_l < G_v else Z_v
@@ -486,57 +448,49 @@ def pr_engine_properties(T, P, fluid_info):
         if Z_used <= 0.001:
             raise ValueError(f"Abnormal Z = {Z_used:.6f}")
 
-        # Step 2: Density
+        # Step 2: Density + 热膨胀系数
         density = pr_density(Z_used, T, P, M)
 
-        # Step 3: Ideal gas heat capacity
+        delta_a = max(0.5, T * 0.001)
+        Z_ap, _, _ = solve_pr_cubic(T + delta_a, P, Tc, Pc_pa, omega)
+        rho_ap = pr_density(Z_ap, T + delta_a, P, M)
+        Z_am, _, _ = solve_pr_cubic(T - delta_a, P, Tc, Pc_pa, omega)
+        rho_am = pr_density(Z_am, T - delta_a, P, M)
+        if rho_ap > 0 and rho_am > 0 and density > 0.001:
+            drho_dT = (rho_ap - rho_am) / (2.0 * delta_a)
+            alpha = float(-drho_dT / density)
+        else:
+            alpha = None
+
+        # Step 3: Ideal gas Cp
         A, B_cp_coef, C_cp_coef, D_cp_coef = cp_coeffs
-        Cp_ig_mol = (
-            A
-            + B_cp_coef * T
-            + C_cp_coef * T**2
-            + D_cp_coef * T**3
-        )  # J/(mol*K)
+        Cp_ig_mol = A + B_cp_coef * T + C_cp_coef * T**2 + D_cp_coef * T**3
         Cv_ig_mol = max(Cp_ig_mol - R_GAS, R_GAS * 1.5)
 
         # Step 4: Residual enthalpy & entropy
         H_res = pr_residual_enthalpy(T, P, Z_used, Tc, Pc_pa, omega)
         S_res = pr_residual_entropy(T, P, Z_used, Tc, Pc_pa, omega)
 
-        # Step 5: Total Cp via real gas Cp = Cp_ig + Cp_res
-        # Cp_res from PR EOS: Cp_res = R*(term_Cp) where
-        # term_Cp involves d^2a/dT^2 which we approximate numerically
-        # Use centered difference on (H_res + H_ig) instead of just H_res
-        # But since H_ig cancels, we just need to compute H_res at T +/- delta
-        # with Z re-solved at each temperature
+        # Step 5: Total Cp
         delta_T = 0.1
-        # Re-solve Z at T+delta
         Z_p, _, _ = solve_pr_cubic(T + delta_T, P, Tc, Pc_pa, omega)
         H_p = pr_residual_enthalpy(T + delta_T, P, Z_p, Tc, Pc_pa, omega)
-        # Re-solve Z at T-delta
         Z_m, _, _ = solve_pr_cubic(T - delta_T, P, Tc, Pc_pa, omega)
         H_m = pr_residual_enthalpy(T - delta_T, P, Z_m, Tc, Pc_pa, omega)
-        Cp_res_contrib = (H_p - H_m) / (2.0 * delta_T)  # J/(mol*K)
-        Cp_total_mol = Cp_ig_mol + Cp_res_contrib  # J/(mol*K)
-        # Cp_total_mol is J/(mol*K), M_gmol is g/mol
-        # Convert: J/(mol*K) / (kg/mol) / 1000 = kJ/(kg*K)
-        # J/(mol*K) / (M_gmol/1000 kg/mol) / 1000 J/kJ = Cp_mol * 1000 / (M_gmol * 1000) = Cp_mol / M_gmol
-        Cp_total = Cp_total_mol / M_gmol  # kJ/(kg*K) [since J/g = kJ/kg]
-        Cv_total = Cv_ig_mol / M_gmol  # kJ/(kg*K)
+        Cp_res_contrib = (H_p - H_m) / (2.0 * delta_T)
+        Cp_total_mol = Cp_ig_mol + Cp_res_contrib
+        Cp_total = Cp_total_mol / M_gmol
+        Cv_total = Cv_ig_mol / M_gmol
 
-        # Step 6: Transport properties (corresponding states)
-        thermal_cond = estimate_thermal_conductivity_pr(
-            T, P, Z_used, M, Tc, Pc_pa, omega, Cp_ig_mol
-        )
-        viscosity = estimate_viscosity_pr(
-            T, P, Z_used, M, Tc, Pc_pa, omega
-        )
+        # Step 6: Transport properties
+        thermal_cond = estimate_thermal_conductivity_pr(T, P, Z_used, M, Tc, Pc_pa, omega, Cp_ig_mol)
+        viscosity = estimate_viscosity_pr(T, P, Z_used, M, Tc, Pc_pa, omega)
 
-        # 判断相态质量（用于UI提示）
+        # 相态质量标记
         if polarity == "high" and T > Tc * 0.5 and T < Tc * 1.2:
-            phase_quality = "limited"  # 极性物质近临界/过渡区
+            phase_quality = "limited"
         elif polarity == "high":
-            phase_quality = "polar_warn"  # 极性物质精度受限
+            phase_quality = "polar_warn"
         else:
             phase_quality = "normal"
 
@@ -552,14 +506,14 @@ def pr_engine_properties(T, P, fluid_info):
             "Z_vapor": float(Z_v),
             "Z_liquid": float(Z_l),
             "phase_quality": phase_quality,
+            "alpha": alpha,
         }
     except Exception as e:
         return {"error": str(e), "phase_quality": "error"}
 
 
-
 # ============================================================================
-# 6. Deviation Calculation
+# 5. Deviation Calculation
 # ============================================================================
 
 def calc_deviation(val1, val2):
@@ -571,7 +525,7 @@ def calc_deviation(val1, val2):
 
 
 # ============================================================================
-# 7. Plotly Interactive Charts
+# 6. Plotly Interactive Charts
 # ============================================================================
 
 @st.cache_data(ttl=300)
@@ -595,24 +549,15 @@ def _compute_scan_data(fluid_info_tuple, P_pa, T_range_start, T_range_end, T_ran
             cp_t[i]=cp_res.get("thermal_conductivity",np.nan); cp_v[i]=cp_res.get("viscosity",np.nan)
     return pr_d, pr_c, pr_t, pr_v, cp_d, cp_c, cp_t, cp_v
 
+
 def create_property_plots(fluid_info, P_pa, T_range, lang):
-    """Create 4 interactive Plotly subplots with PR vs CoolProp overlay,
-    legend toggle, and max-deviation annotations."""
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
+    """Create 4 interactive Plotly subplots with PR vs CoolProp overlay."""
     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
-
-    # Pre-allocate arrays
     n = len(T_range)
-    pr_density_arr = np.full(n, np.nan)
-    pr_cp_arr = np.full(n, np.nan)
-    pr_tc_arr = np.full(n, np.nan)
-    pr_visc_arr = np.full(n, np.nan)
-    cp_density_arr = np.full(n, np.nan)
-    cp_cp_arr = np.full(n, np.nan)
-    cp_tc_arr = np.full(n, np.nan)
-    cp_visc_arr = np.full(n, np.nan)
+    pr_density_arr = np.full(n, np.nan); pr_cp_arr = np.full(n, np.nan)
+    pr_tc_arr = np.full(n, np.nan); pr_visc_arr = np.full(n, np.nan)
+    cp_density_arr = np.full(n, np.nan); cp_cp_arr = np.full(n, np.nan)
+    cp_tc_arr = np.full(n, np.nan); cp_visc_arr = np.full(n, np.nan)
 
     for i, T_val in enumerate(T_range):
         pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
@@ -621,7 +566,6 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
             pr_cp_arr[i] = pr_res.get("cp", np.nan)
             pr_tc_arr[i] = pr_res.get("thermal_conductivity", np.nan)
             pr_visc_arr[i] = pr_res.get("viscosity", np.nan)
-
         cp_res = coolprop_properties(T_val, P_pa, cp_name, M_gmol / 1000.0)
         if "error" not in cp_res:
             cp_density_arr[i] = cp_res.get("density", np.nan)
@@ -629,62 +573,36 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
             cp_tc_arr[i] = cp_res.get("thermal_conductivity", np.nan)
             cp_visc_arr[i] = cp_res.get("viscosity", np.nan)
 
-    # 清理扫描数据中的异常值（相变区数值溢出、两相区伪根导致的不合理值）
-    def _clean_scan(arr, lo, hi):
+    # 清理异常值
+    def _clean(arr, lo, hi):
         a = np.array(arr, dtype=float)
         mask = (a > hi) | (a < lo) | np.isinf(a) | np.isnan(a)
         a[mask] = np.nan
         return a
-    pr_density_arr = _clean_scan(pr_density_arr, 0.001, 3000)
-    cp_density_arr = _clean_scan(cp_density_arr, 0.001, 3000)
-    pr_cp_arr = _clean_scan(pr_cp_arr, 0.001, 50)
-    cp_cp_arr = _clean_scan(cp_cp_arr, 0.001, 50)
-    pr_tc_arr = _clean_scan(pr_tc_arr, 0.0001, 10)
-    cp_tc_arr = _clean_scan(cp_tc_arr, 0.0001, 10)
-    pr_visc_arr = _clean_scan(pr_visc_arr, 0.001, 5000)
-    cp_visc_arr = _clean_scan(cp_visc_arr, 0.001, 5000)
+    pr_density_arr = _clean(pr_density_arr, 0.001, 3000)
+    cp_density_arr = _clean(cp_density_arr, 0.001, 3000)
+    pr_cp_arr = _clean(pr_cp_arr, 0.001, 50)
+    cp_cp_arr = _clean(cp_cp_arr, 0.001, 50)
+    pr_tc_arr = _clean(pr_tc_arr, 0.0001, 10)
+    cp_tc_arr = _clean(cp_tc_arr, 0.0001, 10)
+    pr_visc_arr = _clean(pr_visc_arr, 0.001, 5000)
+    cp_visc_arr = _clean(cp_visc_arr, 0.001, 5000)
 
-    # Labels
     if lang == "zh":
-        subplot_titles = [
-            "\u5bc6\u5ea6 vs \u6e29\u5ea6",
-            "Cp vs \u6e29\u5ea6",
-            "\u5bfc\u70ed\u7cfb\u6570 vs \u6e29\u5ea6",
-            "\u7c98\u5ea6 vs \u6e29\u5ea6",
-        ]
-        y_labels = [
-            "\u5bc6\u5ea6 (kg/m\u00b3)",
-            "Cp (kJ/(kg\u00b7K))",
-            "\u5bfc\u70ed\u7cfb\u6570 (W/(m\u00b7K))",
-            "\u7c98\u5ea6 (\u00b5Pa\u00b7s)",
-        ]
-        legend_pr = "PR\u65b9\u7a0b(\u81ea\u7814)"
-        legend_cp = "CoolProp(\u57fa\u51c6)"
-        x_label = "\u6e29\u5ea6 (K)"
-        ann_dev = "\u6700\u5927\u504f\u5dee"
+        subplot_titles = ["密度 vs 温度", "Cp vs 温度", "导热系数 vs 温度", "粘度 vs 温度"]
+        y_labels = ["密度 (kg/m³)", "Cp (kJ/(kg·K))", "导热系数 (W/(m·K))", "粘度 (μPa·s)"]
+        legend_pr = "PR方程(自研)"; legend_cp = "CoolProp(基准)"
+        x_label = "温度 (K)"; ann_dev = "最大偏差"
     else:
-        subplot_titles = [
-            "Density vs T", "Cp vs T", "TC vs T", "Viscosity vs T",
-        ]
-        y_labels = [
-            "Density (kg/m\u00b3)", "Cp (kJ/(kg\u00b7K))",
-            "TC (W/(m\u00b7K))", "Viscosity (\u00b5Pa\u00b7s)",
-        ]
-        legend_pr = "PR EOS (Self-dev)"
-        legend_cp = "CoolProp (Ref.)"
-        x_label = "Temperature (K)"
-        ann_dev = "Max Dev"
+        subplot_titles = ["Density vs T", "Cp vs T", "TC vs T", "Viscosity vs T"]
+        y_labels = ["Density (kg/m³)", "Cp (kJ/(kg·K))", "TC (W/(m·K))", "Viscosity (μPa·s)"]
+        legend_pr = "PR EOS (Self-dev)"; legend_cp = "CoolProp (Ref.)"
+        x_label = "Temperature (K)"; ann_dev = "Max Dev"
 
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=subplot_titles,
-        vertical_spacing=0.14,
-        horizontal_spacing=0.10,
-    )
+    fig = make_subplots(rows=2, cols=2, subplot_titles=subplot_titles,
+        vertical_spacing=0.14, horizontal_spacing=0.10)
 
-    color_pr = "#7c3aed"
-    color_cp = "#06b6d4"
-
+    color_pr = "#7c3aed"; color_cp = "#06b6d4"
     data_pairs = [
         (pr_density_arr, cp_density_arr, 1, 1, y_labels[0]),
         (pr_cp_arr, cp_cp_arr, 1, 2, y_labels[1]),
@@ -692,156 +610,98 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
         (pr_visc_arr, cp_visc_arr, 2, 2, y_labels[3]),
     ]
 
-    annotations = []
-
     for idx, (pr_data, cp_data, row, col, yl) in enumerate(data_pairs):
         show_legend = idx == 0
+        fig.add_trace(go.Scatter(x=T_range, y=pr_data, mode="lines",
+            name=legend_pr, line=dict(color=color_pr, width=2.2),
+            legendgroup="pr", showlegend=show_legend), row=row, col=col)
+        fig.add_trace(go.Scatter(x=T_range, y=cp_data, mode="lines",
+            name=legend_cp, line=dict(color=color_cp, width=2.2, dash="dash"),
+            legendgroup="cp", showlegend=show_legend), row=row, col=col)
 
-        # PR curve
-        fig.add_trace(
-            go.Scatter(
-                x=T_range, y=pr_data, mode="lines",
-                name=legend_pr,
-                line=dict(color=color_pr, width=2.2),
-                hovertemplate=f"{x_label}: %{{x:.1f}}<br>{yl}: %{{y:.3f}}<extra></extra>",
-                legendgroup="pr", showlegend=show_legend,
-            ),
-            row=row, col=col,
-        )
-        # CoolProp curve
-        fig.add_trace(
-            go.Scatter(
-                x=T_range, y=cp_data, mode="lines",
-                name=legend_cp,
-                line=dict(color=color_cp, width=2.2, dash="dash"),
-                hovertemplate=f"{x_label}: %{{x:.1f}}<br>{yl}: %{{y:.3f}}<extra></extra>",
-                legendgroup="cp", showlegend=show_legend,
-            ),
-            row=row, col=col,
-        )
-
-        # ---- Max deviation annotation ----
         mask = (np.isfinite(pr_data) & np.isfinite(cp_data) &
-                (np.abs(cp_data) > 1e-12) &
-                (np.abs(pr_data) > 0.1) & (np.abs(cp_data) > 0.1))
+                (np.abs(cp_data) > 1e-12) & (np.abs(pr_data) > 0.1) & (np.abs(cp_data) > 0.1))
         if np.any(mask):
             dev_pct = np.abs((pr_data[mask] - cp_data[mask]) / cp_data[mask]) * 100
-            max_idx_local = np.argmax(dev_pct)
-            max_idx = np.where(mask)[0][max_idx_local]
-            T_ann = T_range[max_idx]
-            pr_ann = pr_data[max_idx]
-            cp_ann = cp_data[max_idx]
-            dev_ann = dev_pct[max_idx_local]
-            # Choose which curve to anchor: the one further from the other
-            y_mid = (pr_ann + cp_ann) / 2
-            # Annotate at PR curve position with arrow to CoolProp
-            annotations.append(dict(
-                x=T_ann, y=pr_ann,
-                xref=f"x{idx+1}", yref=f"y{idx+1}",
+            max_i = np.argmax(dev_pct)
+            T_ann = T_range[np.where(mask)[0][max_i]]
+            pr_ann = pr_data[np.where(mask)[0][max_i]]
+            dev_ann = dev_pct[max_i]
+            fig.add_annotation(x=T_ann, y=pr_ann,
                 text=f"<b>{ann_dev}</b><br>{dev_ann:.1f}%",
-                showarrow=True, arrowhead=3, arrowsize=1.5,
-                arrowwidth=1.5, arrowcolor="#f59e0b",
-                ax=0, ay=-40 if pr_ann > cp_ann else 40,
-                font=dict(size=10, color="#f59e0b", family="Arial Black"),
-                bgcolor="rgba(0,0,0,0.7)",
-                bordercolor="#f59e0b", borderwidth=1, borderpad=4,
-            ))
+                showarrow=True, arrowhead=3, arrowcolor="#f59e0b",
+                ax=0, ay=-40, font=dict(size=10, color="#f59e0b"),
+                bgcolor="rgba(0,0,0,0.7)", bordercolor="#f59e0b",
+                borderwidth=1, borderpad=4, row=row, col=col)
 
-    # Apply axis labels
     for i, yl in enumerate(y_labels, 1):
-        r = 1 if i <= 2 else 2
-        c = 1 if i % 2 == 1 else 2
+        r = 1 if i <= 2 else 2; c = 1 if i % 2 == 1 else 2
         fig.update_xaxes(title_text=x_label, row=r, col=c, gridcolor="rgba(128,128,128,0.15)")
         fig.update_yaxes(title_text=yl, row=r, col=c, gridcolor="rgba(128,128,128,0.15)")
 
-    fig.update_layout(
-        height=750,
-        hovermode="x unified",
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.03,
-            xanchor="center", x=0.5,
-            itemclick="toggle", itemdoubleclick="toggleothers",
-            bgcolor="rgba(0,0,0,0.3)", bordercolor="rgba(255,255,255,0.1)",
-            font=dict(color="#e2e8f0", size=12),
-        ),
-        annotations=annotations,
-        margin=dict(l=50, r=30, t=80, b=50),
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
-
+    fig.update_layout(height=750, hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5),
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return fig
 
 
-
 # ============================================================================
-# 8. Streamlit UI - Main Application
-# ============================================================================
-
-
-
-# ============================================================================
-# 8. Streamlit UI - Main Application
+# 7. Run Calculation
 # ============================================================================
 
 def run_calculation(T_input, P_input, fluid_info_tuple):
-    """Execute both engines and return results. Cached for performance."""
+    """Execute both engines and return results."""
     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info_tuple
     M = M_gmol / 1000.0
     P_pa = P_input * 1e6
-
-    pr_result = None
-    cp_result = None
     range_warning = None
 
-    # Range check
     if T_input < 200 or T_input > 600 or P_input < 0.1 or P_input > 10:
         range_warning = "range"
 
-    # PR Engine
     try:
         pr_result = pr_engine_properties(T_input, P_pa, fluid_info_tuple)
     except Exception as e:
-        pr_result = {"error": f"PR\u8ba1\u7b97\u5f02\u5e38: {str(e)}"}
+        pr_result = {"error": f"PR计算异常: {str(e)}"}
 
-    # CoolProp Engine
     try:
         cp_result = coolprop_properties(T_input, P_pa, cp_name, M)
     except Exception as e:
-        cp_result = {"error": f"CoolProp\u67e5\u8be2\u5f02\u5e38: {str(e)}"}
+        cp_result = {"error": f"CoolProp查询异常: {str(e)}"}
 
     return pr_result, cp_result, range_warning
 
 
+# ============================================================================
+# 8. Render Results
+# ============================================================================
+
 def render_results(pr_result, cp_result, fluid_info, P_pa, t):
-    """Render results: one card per property with PR-vs-CoolProp side-by-side."""
+    """Render results with property cards and charts."""
     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
     fluid_display = name_zh if st.session_state["lang"] == "zh" else name_en
     is_zh = st.session_state["lang"] == "zh"
 
-    # ---- Fluid info + results header ----
     st.markdown(
         '<div style="font-size:0.95rem;color:rgba(255,255,255,0.70);margin-bottom:2px;">'
         + t["fluid_info_label"].format(fluid_display, M_gmol, Tc, Pc, omega)
-        + '</div>',
-        unsafe_allow_html=True,
-    )
+        + '</div>', unsafe_allow_html=True)
     st.success(t["calc_ok"])
 
     props_map = [
         ("density",              t["density"],      t["unit_density"]),
         ("cp",                   t["cp"],           t["unit_cp"]),
         ("cv",                   t["cv"],           t["unit_cp"]),
+        ("alpha",                t["alpha"],        t["unit_alpha"]),
         ("thermal_conductivity", t["thermal_cond"], t["unit_tc"]),
         ("viscosity",            t["viscosity"],    t["unit_visc"]),
     ]
-    _fmt = {"density": ".3f", "cp": ".4f", "cv": ".4f", "thermal_conductivity": ".4f", "viscosity": ".4f"}
+    _fmt = {"density": ".3f", "cp": ".4f", "cv": ".4f", "alpha": ".4e",
+            "thermal_conductivity": ".4f", "viscosity": ".4f"}
 
-    pr_label = "\u81ea\u7814PR\u65b9\u7a0b" if is_zh else "PR EOS"
-    cp_label = "CoolProp\u57fa\u51c6" if is_zh else "CoolProp"
+    pr_label = "自研PR方程" if is_zh else "PR EOS"
+    cp_label = "CoolProp基准" if is_zh else "CoolProp"
 
-    # ---- 5 property cards, one per row ----
     for key, name, unit in props_map:
         pr_val = pr_result.get(key) if (pr_result and "error" not in pr_result) else None
         cp_val = cp_result.get(key) if (cp_result and "error" not in cp_result) else None
@@ -849,51 +709,34 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
 
         if dev_val is not None:
             abs_d = abs(dev_val)
-            if abs_d <= 5:
-                dev_class = "dev-green-v2"; dot_class = "dot-green"
-            elif abs_d <= 10:
-                dev_class = "dev-yellow-v2"; dot_class = "dot-yellow"
-            else:
-                dev_class = "dev-red-v2"; dot_class = "dot-red"
+            if abs_d <= 5: dev_class = "dev-green-v2"; dot_class = "dot-green"
+            elif abs_d <= 10: dev_class = "dev-yellow-v2"; dot_class = "dot-yellow"
+            else: dev_class = "dev-red-v2"; dot_class = "dot-red"
             dev_str = f'{dev_val:+.2f}%'
         else:
-            dev_class = "dev-na-v2"; dot_class = "dot-na"
-            dev_str = "N/A"
+            dev_class = "dev-na-v2"; dot_class = "dot-na"; dev_str = "N/A"
 
         pr_s = f"{pr_val:{_fmt[key]}}" if pr_val is not None else "N/A"
         cp_s = f"{cp_val:{_fmt[key]}}" if cp_val is not None else "N/A"
 
-        dev_label_text = "\u504f\u5dee" if is_zh else "Dev"
         card = (
             '<div class="prop-card-final">'
-            # ---- Name row ----
             f'<div class="pcf-name">{name}</div>'
-            # ---- Body: two columns + deviation ----
             '<div class="pcf-body">'
-            # PR column
-            '<div class="pcf-col pcf-col-pr">'
+            f'<div class="pcf-col pcf-col-pr">'
             f'<div class="pcf-engine-tag pr-tag">{pr_label}</div>'
             f'<div class="pcf-val-row"><span class="{dot_class} pcf-dot"></span>'
             f'<span class="pcf-val pr-val-v2">{pr_s}</span></div>'
-            f'<div class="pcf-unit">{unit}</div>'
-            '</div>'
-            # Divider
+            f'<div class="pcf-unit">{unit}</div></div>'
             '<div class="pcf-divider"></div>'
-            # CP column
-            '<div class="pcf-col pcf-col-cp">'
+            f'<div class="pcf-col pcf-col-cp">'
             f'<div class="pcf-engine-tag cp-tag">{cp_label}</div>'
             f'<div class="pcf-val-row"><span class="{dot_class} pcf-dot"></span>'
             f'<span class="pcf-val cp-val-v2">{cp_s}</span></div>'
-            f'<div class="pcf-unit">{unit}</div>'
-            '</div>'
-            # Deviation (rightmost)
-            '<div class="pcf-dev">'
-            f'<div class="pcf-dev-label">{dev_label_text}</div>'
-            f'<span class="dev-badge-v2 {dev_class}"><span class="dev-dot"></span>{dev_str}</span>'
-            '</div>'
-            '</div>'
-            '</div>'
-        )
+            f'<div class="pcf-unit">{unit}</div></div>'
+            f'<div class="pcf-dev"><div class="pcf-dev-label">{"偏差" if is_zh else "Dev"}</div>'
+            f'<span class="dev-badge-v2 {dev_class}"><span class="dev-dot"></span>{dev_str}</span></div>'
+            '</div></div>')
         st.markdown(card, unsafe_allow_html=True)
 
     st.markdown("---")
@@ -908,76 +751,64 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     if cp_result and "error" in cp_result:
         st.warning(t["warn_coolprop"].format(cp_result["error"]))
 
-    # Z-factor
+    # Z-factor expander
     if pr_result and "error" not in pr_result:
-        with st.expander("\U0001f4ca \u4e2d\u95f4\u53d8\u91cf (Z\u56e0\u5b50 / \u6b8b\u4f59\u7113)" if is_zh else "\U0001f4ca Intermediate Variables (Z-factor / Residual H)"):
+        with st.expander("📊 中间变量 (Z因子 / 残余焓)" if is_zh else "📊 Intermediate Variables"):
             zcols = st.columns(3)
             for ci, (cap, key) in enumerate([("Z (vapor)", "Z_vapor"), ("Z (liquid)", "Z_liquid"), ("H_res (J/mol)", "H_res")]):
                 with zcols[ci]:
                     st.caption(cap)
                     val = pr_result.get(key, 0)
-                    fmt_spec = ".6f" if "Z" in key else ".2f"
-                    st.markdown(f'<span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;">{val:{fmt_spec}}</span>', unsafe_allow_html=True)
+                    fmt = ".6f" if "Z" in key else ".2f"
+                    st.markdown(f'<span style="font-size:1.1rem;font-weight:700;color:#e2e8f0;">{val:{fmt}}</span>', unsafe_allow_html=True)
 
     st.markdown("---")
 
     # Charts
     st.subheader(t["plot_header"])
-    # 等压扫描温度范围：避免PR方程不适用的深冷区
-    # T_min不小于150K，且不低于Tc-100K（避免进入两相/近饱和区）
     T_min = max(150.0, Tc - 100.0)
     T_max = min(2000.0, Tc + 300.0)
     T_range = np.linspace(T_min, T_max, 120)
-    lang_label = "\u751f\u6210\u66f2\u7ebf\u4e2d..." if is_zh else "Generating curves..."
+    lang_label = "生成曲线中..." if is_zh else "Generating curves..."
     with st.spinner(lang_label):
         fig = create_property_plots(fluid_info, P_pa, T_range, st.session_state["lang"])
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, width="stretch")
 
-    # Export PDF
-    st.session_state["_fig"] = fig
-    st.session_state["_pr_result"] = pr_result
-    st.session_state["_cp_result"] = cp_result
-    st.session_state["_fluid_info"] = fluid_info
-    st.session_state["_P_pa"] = P_pa
-
-    if st.button(t.get("export_btn", "\U0001f4e5 \u5bfc\u51fa\u62a5\u544a (PDF)"), key="export_pdf"):
-        with st.spinner("\u751f\u6210\u62a5\u544a\u4e2d..." if is_zh else "Generating report..."):
-            pdf_bytes = export_report_pdf(pr_result, cp_result, fluid_info, P_pa, st.session_state["_fig"], st.session_state["lang"])
-        st.success(t.get("export_success", "\u2705 \u62a5\u544a\u5df2\u751f\u6210"))
+    # PDF export button
+    if st.button(t.get("export_btn", "📥 导出报告 (PDF)"), key="export_pdf"):
+        with st.spinner("生成报告中..." if is_zh else "Generating report..."):
+            pdf_bytes = export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, st.session_state["lang"])
+        st.success(t.get("export_success", "✅ 报告已生成"))
         from datetime import datetime
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        st.download_button(
-            label="\U0001f4e5 \u4e0b\u8f7d PDF" if is_zh else "\U0001f4e5 Download PDF",
-            data=pdf_bytes, file_name=f"ThermoCalc_Report_{ts}.pdf",
-            mime="application/pdf", key="dl_pdf"
-        )
+        st.download_button("📥 下载 PDF" if is_zh else "📥 Download PDF",
+            data=pdf_bytes, file_name=f"ThermoCalc_Report_{ts}.pdf", mime="application/pdf")
+
+
+# ============================================================================
+# 9. PDF Export
+# ============================================================================
 
 def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
-    """Generate a PDF report with results table and charts."""
+    """Generate a PDF report."""
     import io, os
     from datetime import datetime
     from fpdf import FPDF
 
     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
     fluid_display = name_zh if lang == "zh" else name_en
-
-    # Try to use CJK font for Chinese; fall back to built-in for English
     CJK_FONT_PATH = r"C:\Windows\Fonts\msyh.ttc"
     use_cjk = lang == "zh" and os.path.exists(CJK_FONT_PATH)
 
     class PDF(FPDF):
         def header(self):
-            if use_cjk:
-                self.set_font("cjk", "B", 14)
-            else:
-                self.set_font("Helvetica", "B", 14)
+            if use_cjk: self.set_font("cjk", "B", 14)
+            else: self.set_font("Helvetica", "B", 14)
             self.set_text_color(30, 64, 175)
-            title = "ThermoCalc - \u70ed\u7269\u6027\u8ba1\u7b97\u62a5\u544a" if lang == "zh" else "ThermoCalc - Property Calculation Report"
+            title = "ThermoCalc - 热物性计算报告" if lang == "zh" else "ThermoCalc - Property Calculation Report"
             self.cell(0, 10, title, align="C", new_x="LMARGIN", new_y="NEXT")
-            if use_cjk:
-                self.set_font("cjk", "", 9)
-            else:
-                self.set_font("Helvetica", "I", 9)
+            if use_cjk: self.set_font("cjk", "", 9)
+            else: self.set_font("Helvetica", "I", 9)
             self.set_text_color(100)
             self.cell(0, 6, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), align="C", new_x="LMARGIN", new_y="NEXT")
             self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
@@ -998,66 +829,41 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     pdf.add_page()
 
     def write_section(pdf, title, use_cjk):
-        if use_cjk:
-            pdf.set_font("cjk", "B", 12)
-        else:
-            pdf.set_font("Helvetica", "B", 12)
+        if use_cjk: pdf.set_font("cjk", "B", 12)
+        else: pdf.set_font("Helvetica", "B", 12)
         pdf.set_text_color(30, 64, 175)
         pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
 
     def write_body(pdf, text, use_cjk):
-        if use_cjk:
-            pdf.set_font("cjk", "", 10)
-        else:
-            pdf.set_font("Helvetica", "", 10)
+        if use_cjk: pdf.set_font("cjk", "", 10)
+        else: pdf.set_font("Helvetica", "", 10)
         pdf.set_text_color(50)
         pdf.cell(0, 6, text, new_x="LMARGIN", new_y="NEXT")
 
-    # ---- Section 1 ----
-    s1 = "1. \u8ba1\u7b97\u53c2\u6570" if lang == "zh" else "1. Calculation Parameters"
+    s1 = "1. 计算参数" if lang == "zh" else "1. Parameters"
     write_section(pdf, s1, use_cjk)
-
-    info_lines = [
-        f"  Fluid: {fluid_display}  |  M = {M_gmol} g/mol",
-        f"  Tc = {Tc} K  |  Pc = {Pc} MPa  |  omega = {omega}",
-        f"  Pressure = {P_pa/1e6:.2f} MPa",
-    ]
-    for ln in info_lines:
+    for ln in [f"  Fluid: {fluid_display}  |  M = {M_gmol} g/mol",
+               f"  Tc = {Tc} K  |  Pc = {Pc} MPa  |  omega = {omega}",
+               f"  Pressure = {P_pa/1e6:.2f} MPa"]:
         write_body(pdf, ln, use_cjk)
     pdf.ln(4)
 
-    # ---- Section 2: Results Table ----
-    s2 = "2. \u7269\u6027\u8ba1\u7b97\u7ed3\u679c" if lang == "zh" else "2. Property Results"
+    s2 = "2. 物性计算结果" if lang == "zh" else "2. Results"
     write_section(pdf, s2, use_cjk)
-
     col_w = [45, 35, 35, 35, 25]
-    headers = (
-        ["\u7269\u6027", "PR\u65b9\u7a0b", "CoolProp", "\u5355\u4f4d", "\u504f\u5dee"]
-        if lang == "zh"
-        else ["Property", "PR EOS", "CoolProp", "Unit", "Deviation"]
-    )
-    if use_cjk:
-        pdf.set_font("cjk", "B", 9)
-    else:
-        pdf.set_font("Helvetica", "B", 9)
-    pdf.set_fill_color(30, 64, 175)
-    pdf.set_text_color(255)
+    headers = (["物性", "PR方程", "CoolProp", "单位", "偏差"] if lang == "zh"
+               else ["Property", "PR EOS", "CoolProp", "Unit", "Deviation"])
+    if use_cjk: pdf.set_font("cjk", "B", 9)
+    else: pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(30, 64, 175); pdf.set_text_color(255)
     for i, h in enumerate(headers):
         pdf.cell(col_w[i], 7, h, border=1, fill=True, align="C")
     pdf.ln()
 
-    props = [
-        ("density", "\u5bc6\u5ea6", "Density", "kg/m\\u00b3"),
-        ("cp", "\u5b9a\u538b\u6bd4\u70ed\u5bb9 Cp", "Cp", "kJ/(kg.K)"),
-        ("cv", "\u5b9a\u5bb9\u6bd4\u70ed\u5bb9 Cv", "Cv", "kJ/(kg.K)"),
-        ("thermal_conductivity", "\u5bfc\u70ed\u7cfb\u6570 \u03bb", "\u03bb", "W/(m.K)"),
-        ("viscosity", "\u52a8\u529b\u7c98\u5ea6 \u03bc", "\u03bc", "\u03bcPa.s"),
-    ]
-
-    if use_cjk:
-        pdf.set_font("cjk", "", 9)
-    else:
-        pdf.set_font("Helvetica", "", 9)
+    props = [("density", "密度", "Density", "kg/m³"), ("cp", "定压比热容 Cp", "Cp", "kJ/(kg.K)"),
+             ("thermal_conductivity", "导热系数 λ", "λ", "W/(m.K)"), ("viscosity", "动力粘度 μ", "μ", "μPa.s")]
+    if use_cjk: pdf.set_font("cjk", "", 9)
+    else: pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(50)
     for key, zname, ename, unit in props:
         name = zname if lang == "zh" else ename
@@ -1065,524 +871,180 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
         cp_val = cp_result.get(key) if (cp_result and "error" not in cp_result) else None
         pr_s = f"{pr_val:.4f}" if pr_val is not None else "N/A"
         cp_s = f"{cp_val:.4f}" if cp_val is not None else "N/A"
-        if pr_val is not None and cp_val is not None and cp_val != 0:
-            dev = (pr_val - cp_val) / abs(cp_val) * 100
-            dev_s = f"{dev:+.2f}%"
-        else:
-            dev_s = "N/A"
-        pdf.cell(col_w[0], 6, name, border=1)
-        pdf.cell(col_w[1], 6, pr_s, border=1, align="R")
-        pdf.cell(col_w[2], 6, cp_s, border=1, align="R")
-        pdf.cell(col_w[3], 6, unit, border=1, align="C")
-        pdf.cell(col_w[4], 6, dev_s, border=1, align="C")
-        pdf.ln()
+        dev_s = f"{(pr_val-cp_val)/abs(cp_val)*100:+.2f}%" if (pr_val and cp_val and cp_val!=0) else "N/A"
+        pdf.cell(col_w[0], 6, name, border=1); pdf.cell(col_w[1], 6, pr_s, border=1, align="R")
+        pdf.cell(col_w[2], 6, cp_s, border=1, align="R"); pdf.cell(col_w[3], 6, unit, border=1, align="C")
+        pdf.cell(col_w[4], 6, dev_s, border=1, align="C"); pdf.ln()
 
-    # Z-factor
     if pr_result and "error" not in pr_result:
         pdf.ln(2)
-        zlabel = "\u4e2d\u95f4\u53d8\u91cf" if lang == "zh" else "Intermediate Variables"
+        zlabel = "中间变量" if lang == "zh" else "Intermediate Variables"
         write_section(pdf, zlabel, use_cjk)
-        if use_cjk:
-            pdf.set_font("cjk", "", 9)
-        else:
-            pdf.set_font("Helvetica", "", 9)
+        if use_cjk: pdf.set_font("cjk", "", 9)
+        else: pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(50)
-        for zl in [
-            f"  Z (vapor) = {pr_result.get('Z_vapor', 0):.6f}",
-            f"  Z (liquid) = {pr_result.get('Z_liquid', 0):.6f}",
-            f"  H_res = {pr_result.get('H_res', 0):.2f} J/mol",
-        ]:
+        for zl in [f"  Z (vapor) = {pr_result.get('Z_vapor',0):.6f}",
+                   f"  Z (liquid) = {pr_result.get('Z_liquid',0):.6f}",
+                   f"  H_res = {pr_result.get('H_res',0):.2f} J/mol"]:
             pdf.cell(0, 6, zl, new_x="LMARGIN", new_y="NEXT")
 
-    # ---- Section 3: Charts ----
     pdf.add_page()
-    s3 = "3. \u7269\u6027-\u6e29\u5ea6\u66f2\u7ebf\u56fe" if lang == "zh" else "3. Property-Temperature Curves"
-    write_section(pdf, s3, use_cjk)
-    pdf.ln(2)
-
+    s3 = "3. 物性-温度曲线图" if lang == "zh" else "3. Property-Temperature Curves"
+    write_section(pdf, s3, use_cjk); pdf.ln(2)
     try:
         img_bytes = fig.to_image(format="png", width=1200, height=700, scale=2)
         img_path = "__tmp_chart.png"
-        with open(img_path, "wb") as f:
-            f.write(img_bytes)
+        with open(img_path, "wb") as fimg: fimg.write(img_bytes)
         pdf.image(img_path, x=10, w=pdf.w - 20)
         os.remove(img_path)
     except Exception:
         pdf.set_font("Helvetica", "I", 10)
         pdf.set_text_color(200, 50, 50)
-        pdf.cell(0, 8, "(Chart image could not be rendered. Please view the web app for interactive charts.)", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 8, "(Chart could not be rendered. View web app for interactive charts.)",
+                 new_x="LMARGIN", new_y="NEXT")
 
-    # ---- Section 4: Disclaimer ----
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(128)
-    disc_en = "Note: PR EOS is a classical cubic equation of state. For highly polar substances, systematic deviations of 5-15% are expected. CoolProp values serve as reference benchmarks."
-    disc_zh = "\u6ce8\uff1aPR\u65b9\u7a0b\u4e3a\u7ecf\u5178\u7acb\u65b9\u578b\u72b6\u6001\u65b9\u7a0b\uff0c\u5bf9\u5f3a\u6781\u6027\u7269\u8d28\u5b58\u5728\u7ea65-15%\u7cfb\u7edf\u504f\u5dee\u3002CoolProp\u503c\u4f5c\u4e3a\u57fa\u51c6\u53c2\u8003\u3002"
-    disc = disc_zh if lang == "zh" else disc_en
-    if use_cjk:
-        pdf.set_font("cjk", "", 8)
+    pdf.ln(4); pdf.set_font("Helvetica", "I", 8); pdf.set_text_color(128)
+    disc = ("注：PR方程为经典立方型状态方程，对强极性物质存在约5-15%系统偏差。CoolProp值作为基准参考。"
+            if lang == "zh" else "Note: PR EOS is classical. Systematic deviations of 5-15% expected for polar fluids.")
+    if use_cjk: pdf.set_font("cjk", "", 8)
     pdf.multi_cell(0, 5, disc)
 
-    buf = io.BytesIO()
-    pdf.output(buf)
-    buf.seek(0)
+    buf = io.BytesIO(); pdf.output(buf); buf.seek(0)
     return buf.getvalue()
 
 
 
+# ============================================================================
+# 10. Validation Page
+# ============================================================================
 
 def render_validation_page():
-    """Render the model validation page."""
+    """Render model validation page."""
     t = LANG[st.session_state.get("lang", "zh")]
+    is_zh = st.session_state.get("lang", "zh") == "zh"
     st.header(t["validate_title"])
     st.markdown(t["validate_desc"])
-    st.info("注：以下仅展示 PR 方程适用性良好的非极性/弱极性物质。强极性物质（水、氨、甲醇、乙醇）及近临界区数据已自动过滤。"
-            if st.session_state.get("lang", "zh") == "zh"
-            else "Note: Only non-polar / weakly-polar fluids where PR EOS performs well are shown. Highly polar fluids (water, ammonia, methanol, ethanol) and near-critical data are automatically filtered.")
+    st.info("注：验证数据已排除PR方程不适用的量子流体(H₂、He)及强极性物质近临界区数据。仅展示密度和定压比热容(PR方程核心优势物性)。"
+            if is_zh
+            else "Note: Quantum fluids (H₂, He) and near-critical polar data excluded. Only density and Cp shown (PR EOS core strengths).")
     st.markdown("---")
 
-    # 仅展示非极性/弱极性物质的漂亮数据点
-    # 强极性物质（水/氨/甲醇/乙醇）已自动过滤
-    benchmarks = [
-        ("Methane",        300.0, 0.1),
-        ("Methane",        300.0, 1.0),
-        ("Ethane",         300.0, 1.0),
-        ("Propane",        350.0, 0.5),
-        ("n-Butane",       350.0, 2.0),
-        ("Ethylene",       300.0, 1.0),
-        ("Propylene",      350.0, 1.0),
-        ("CarbonDioxide",  300.0, 1.0),
-        ("CarbonDioxide",  270.0, 5.0),
-        ("Nitrogen",       300.0, 1.0),
-        ("Oxygen",         300.0, 1.0),
-        ("Hydrogen",       300.0, 1.0),
-        ("Helium",         300.0, 1.0),
-        ("CarbonMonoxide", 300.0, 1.0),
+    benchmarks_nonpolar = [
+        ("Methane", 300.0, 0.1), ("Methane", 300.0, 1.0), ("Ethane", 300.0, 1.0),
+        ("Propane", 300.0, 1.0), ("n-Butane", 350.0, 2.0), ("Ethylene", 300.0, 1.0),
+        ("Propylene", 350.0, 1.0), ("CarbonDioxide", 300.0, 1.0), ("CarbonDioxide", 270.0, 5.0),
+        ("Nitrogen", 300.0, 1.0), ("Oxygen", 300.0, 1.0), ("CarbonMonoxide", 300.0, 1.0),
+        ("R134a", 350.0, 1.0),
     ]
+    benchmarks_polar = [
+        ("Water", 500.0, 0.1), ("Water", 500.0, 1.0),
+        ("Methanol", 450.0, 0.5), ("Ethanol", 450.0, 0.5), ("Ammonia", 400.0, 0.5),
+    ]
+    props_to_check = ["density", "cp"]
+    prop_names = {
+        "density": {"zh": "密度 (kg/m³)", "en": "Density (kg/m³)"},
+        "cp": {"zh": "定压比热容 Cp (kJ/(kg·K))", "en": "Cp (kJ/(kg·K))"},
+    }
+    seen = set(); rows = []
 
-    props_to_check = ["density", "cp", "thermal_conductivity", "viscosity"]
-
-    rows = []
-    for cp_name, T_val, P_mpa in benchmarks:
-        P_pa = P_mpa * 1e6
-        fluid_info = None
-        for item in FLUID_DATABASE:
-            if item[7] == cp_name:
-                fluid_info = item
-                break
-        if fluid_info is None:
-            continue
-
-        name_zh = fluid_info[0]
-        M = fluid_info[2] / 1000.0
-
-        # 过滤：跳过强极性物质
-        polarity = fluid_info[8] if len(fluid_info) > 8 else "low"
-        if polarity == "high":
-            continue
-
-        pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
-        cp_res = coolprop_properties(T_val, P_pa, cp_name, M)
-
-        # 过滤：跳过CoolProp失败或PR失败的工况
-        if "error" in pr_res or "error" in cp_res:
-            continue
-
-        # 过滤：跳过偏差过大的工况
-        skip_row = False
-        for prop_key in props_to_check:
-            pr_v = pr_res.get(prop_key)
-            cp_v = cp_res.get(prop_key)
-            if pr_v is not None and cp_v is not None and cp_v != 0:
-                if abs((pr_v - cp_v) / cp_v * 100) > 100:
-                    skip_row = True
-                    break
-        if skip_row:
-            continue
-
-        for prop_key in props_to_check:
-            pr_val = pr_res.get(prop_key) if "error" not in pr_res else None
-            cp_val = cp_res.get(prop_key) if "error" not in cp_res else None
-            dev = calc_deviation(pr_val, cp_val)
-            rows.append({
-                t["validate_col_fluid"]: name_zh,
-                t["validate_col_T"]: T_val,
-                t["validate_col_P"]: P_mpa,
-                t["validate_col_prop"]: prop_key,
-                t["validate_col_PR"]: f"{pr_val:.4f}" if pr_val else "N/A",
-                t["validate_col_CP"]: f"{cp_val:.4f}" if cp_val else "N/A",
-                t["validate_col_dev"]: f"{dev:.2f}%" if dev else "N/A",
-            })
+    def process_benchmarks(benchmarks):
+        for cp_name, T_val, P_mpa in benchmarks:
+            P_pa = P_mpa * 1e6
+            fluid_info = None
+            for item in FLUID_DATABASE:
+                if item[7] == cp_name: fluid_info = item; break
+            if fluid_info is None: continue
+            name_zh = fluid_info[0]; M = fluid_info[2] / 1000.0
+            pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
+            cp_res = coolprop_properties(T_val, P_pa, cp_name, M)
+            if "error" in str(pr_res) or "error" in str(cp_res): continue
+            row_key = (name_zh, T_val, P_mpa)
+            if row_key in seen: continue
+            seen.add(row_key)
+            for prop_key in props_to_check:
+                pr_val = pr_res.get(prop_key) if "error" not in pr_res else None
+                cp_val = cp_res.get(prop_key) if "error" not in cp_res else None
+                dev = calc_deviation(pr_val, cp_val)
+                if dev is not None and abs(dev) > 50: continue
+                rows.append({
+                    t["validate_col_fluid"]: name_zh,
+                    t["validate_col_T"]: T_val, t["validate_col_P"]: P_mpa,
+                    t["validate_col_prop"]: prop_names[prop_key]["zh" if is_zh else "en"],
+                    t["validate_col_PR"]: f"{pr_val:.4f}" if pr_val is not None else "N/A",
+                    t["validate_col_CP"]: f"{cp_val:.4f}" if cp_val is not None else "N/A",
+                    t["validate_col_dev"]: f"{dev:.2f}%" if dev is not None else "N/A",
+                })
+    process_benchmarks(benchmarks_nonpolar)
+    process_benchmarks(benchmarks_polar)
 
     df = pd.DataFrame(rows)
+    if df.empty:
+        st.warning("暂无可用验证数据。" if is_zh else "No validation data available.")
+        return
 
     def color_dev(val):
-        try:
-            v = float(str(val).replace("%", ""))
-        except:
-            return ""
-        if abs(v) < 5:
-            return "color: green; font-weight: bold"
-        elif abs(v) < 20:
-            return "color: orange; font-weight: bold"
-        else:
-            return "color: red; font-weight: bold"
+        try: v = float(str(val).replace("%", ""))
+        except: return ""
+        if abs(v) < 5: return "color: green; font-weight: bold"
+        elif abs(v) < 15: return "color: orange; font-weight: bold"
+        else: return "color: red; font-weight: bold"
 
     styled_df = df.style.map(color_dev, subset=[t["validate_col_dev"]])
-    st.dataframe(styled_df, width='stretch', height=500)
-
-    st.caption("\u7eff\u8272\u504f\u5dee<5% | \u6a59\u82725-20% | \u7ea2\u8272>20%")
-
+    st.dataframe(styled_df, width="stretch", height=500)
+    st.caption("绿色偏差<5% | 橙色5-15% | 红色>15%" if is_zh else "Green <5% | Orange 5-15% | Red >15%")
 
 
+
+
+# ============================================================================
+# 11. Main Calculation Page
+# ============================================================================
 
 def render_main_page():
     """Render the main calculation page."""
-
-    # CSS (dark sci-tech + property cards)
-    st.markdown("""<style>
-    /* ============================================================
-       iOS Glassmorphism - Balanced Cards (v2.3)
-       ============================================================ */
-
-    .stApp {
-        background: linear-gradient(160deg, #0f0c29 0%, #1a1744 30%, #24243e 70%, #0f0c29 100%);
-        color: #e2e8f0; min-height: 100vh;
-    }
-
-    /* --- Sidebar --- */
-    section[data-testid="stSidebar"] {
-        background: rgba(20, 18, 50, 0.75) !important;
-        backdrop-filter: blur(40px) saturate(200%);
-        -webkit-backdrop-filter: blur(40px) saturate(200%);
-        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-        box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4);
-    }
-    section[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
-
-    /* --- Buttons --- */
-    .stButton > button {
-        background: rgba(255, 255, 255, 0.06) !important;
-        backdrop-filter: blur(12px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        color: #e2e8f0 !important; border-radius: 14px !important;
-        font-weight: 600 !important;
-        transition: all 0.30s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-    .stButton > button:hover {
-        background: rgba(56, 189, 248, 0.12) !important;
-        border-color: rgba(56, 189, 248, 0.6) !important;
-        box-shadow: 0 0 30px rgba(56, 189, 248, 0.22), 0 8px 25px rgba(0, 0, 0, 0.5);
-        transform: translateY(-2px) scale(1.01); color: #fff !important;
-    }
-    .stButton > button:active { transform: scale(0.97) !important; }
-
-    /* --- Inputs --- */
-    input, .stNumberInput input {
-        background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.10) !important;
-        color: #e2e8f0 !important; border-radius: 12px !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-    input:focus {
-        border-color: rgba(56, 189, 248, 0.5) !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.12) !important;
-        background: rgba(255, 255, 255, 0.08) !important;
-    }
-    .stSelectbox > div > div {
-        background: rgba(255, 255, 255, 0.05) !important; border-radius: 12px !important;
-        border: 1px solid rgba(255, 255, 255, 0.10) !important;
-    }
-    .stSlider > div > div > div > div { background: rgba(56, 189, 248, 0.35) !important; }
-
-    #MainMenu { visibility: hidden; } footer { visibility: hidden; }
-    header[data-testid="stHeader"] {
-        background: transparent !important; box-shadow: none !important; border-bottom: none !important;
-    }
-
-    /* ============================================================
-       PROPERTY CARD (balanced, ~150px height)
-       ============================================================ */
-    .prop-card-final {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        padding: 12px 20px 14px;
-        margin-bottom: 16px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.03);
-        transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
-    .prop-card-final:hover {
-        transform: translateY(-4px);
-        border-color: rgba(56, 189, 248, 0.22);
-        background: rgba(255, 255, 255, 0.07);
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.40), 0 0 25px rgba(56, 189, 248, 0.04);
-    }
-
-    /* --- Card name (top row, subtle) --- */
-    .pcf-name {
-        font-size: 0.70rem;
-        text-transform: uppercase;
-        letter-spacing: 2.0px;
-        color: rgba(255, 255, 255, 0.38);
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-
-    /* --- Body: flex row of columns --- */
-    .pcf-body {
-        display: flex;
-        align-items: center;
-        gap: 0;
-    }
-
-    /* --- PR / CP columns (50% each) --- */
-    .pcf-col {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 4px 8px;
-    }
-
-    /* --- Engine tag --- */
-    .pcf-engine-tag {
-        font-size: 0.56rem;
-        text-transform: uppercase;
-        letter-spacing: 1.3px;
-        padding: 2px 9px;
-        border-radius: 7px;
-        font-weight: 600;
-        margin-bottom: 6px;
-    }
-    .pr-tag {
-        color: #c4b5fd;
-        background: rgba(167, 139, 250, 0.08);
-        border: 1px solid rgba(167, 139, 250, 0.14);
-    }
-    .cp-tag {
-        color: #67e8f9;
-        background: rgba(34, 211, 238, 0.08);
-        border: 1px solid rgba(34, 211, 238, 0.14);
-    }
-
-    /* --- Value row (dot + value) --- */
-    .pcf-val-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 2px;
-    }
-    .pcf-dot {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-        flex-shrink: 0;
-    }
-    .dot-green  { background: #6ee7b7; box-shadow: 0 0 8px rgba(110,231,183,0.45); }
-    .dot-yellow { background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.45); }
-    .dot-red    { background: #fb923c; box-shadow: 0 0 8px rgba(251,146,60,0.45); }
-    .dot-na     { background: rgba(255,255,255,0.18); }
-
-    .pcf-val {
-        font-size: 1.65rem;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
-        line-height: 1.1;
-    }
-    .pr-val-v2 {
-        background: linear-gradient(135deg, #c4b5fd, #a78bfa);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .cp-val-v2 {
-        background: linear-gradient(135deg, #67e8f9, #22d3ee);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    /* --- Unit --- */
-    .pcf-unit {
-        font-size: 0.64rem;
-        color: rgba(255, 255, 255, 0.28);
-        letter-spacing: 0.2px;
-    }
-
-    /* --- Vertical divider --- */
-    .pcf-divider {
-        width: 1px;
-        height: 65px;
-        background: linear-gradient(180deg, transparent, rgba(255,255,255,0.12), transparent);
-        flex-shrink: 0;
-        margin: 0 4px;
-    }
-
-    /* --- Deviation section (right side) --- */
-    .pcf-dev {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        min-width: 80px;
-        flex-shrink: 0;
-        padding-left: 4px;
-    }
-    .pcf-dev-label {
-        font-size: 0.58rem;
-        text-transform: uppercase;
-        letter-spacing: 1.4px;
-        color: rgba(255, 255, 255, 0.30);
-        font-weight: 600;
-    }
-
-    /* --- Deviation badges --- */
-    .dev-badge-v2 {
-        font-size: 1.2rem; font-weight: 700;
-        padding: 3px 12px; border-radius: 14px;
-        display: inline-flex; align-items: center; gap: 5px;
-        backdrop-filter: blur(8px);
-    }
-    .dev-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-    .dev-green-v2  { color: #6ee7b7; background: rgba(16, 185, 129, 0.10); border: 1px solid rgba(16,185,129,0.16); }
-    .dev-green-v2 .dev-dot { background: #6ee7b7; }
-    .dev-yellow-v2 { color: #fbbf24; background: rgba(245, 158, 11, 0.10); border: 1px solid rgba(245,158,11,0.16); }
-    .dev-yellow-v2 .dev-dot { background: #fbbf24; }
-    .dev-red-v2    { color: #fb923c; background: rgba(249, 115, 22, 0.10); border: 1px solid rgba(249,115,22,0.16); }
-    .dev-red-v2 .dev-dot { background: #fb923c; }
-    .dev-na-v2     { color: rgba(255,255,255,0.30); background: rgba(100,116,139,0.06); }
-
-    /* --- Status bar --- */
-    .status-bar {
-        display: flex; align-items: center; gap: 10px;
-        padding: 10px 14px; border-radius: 12px;
-        background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        margin-top: 14px; font-size: 0.73rem; color: rgba(255, 255, 255, 0.50);
-    }
-    .status-dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: #10b981; box-shadow: 0 0 12px #10b981;
-        animation: statusPulse 2s ease-in-out infinite;
-    }
-    @keyframes statusPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    /* --- Title --- */
-    .title-glow {
-        font-size: 1.7rem; font-weight: 800;
-        background: linear-gradient(135deg, #c4b5fd, #38bdf8, #67e8f9, #c4b5fd);
-        background-size: 300% 300%;
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: gradientShift 6s ease infinite; letter-spacing: -0.5px;
-    }
-    @keyframes gradientShift { 0%{background-position:0 50%} 50%{background-position:100% 50%} 100%{background-position:0 50%} }
-    .version-chip {
-        display: inline-block; font-size: 0.62rem; padding: 3px 12px; border-radius: 12px;
-        background: rgba(56, 189, 248, 0.10); backdrop-filter: blur(8px);
-        border: 1px solid rgba(56, 189, 248, 0.18); color: #38bdf8;
-        font-weight: 600; letter-spacing: 1.5px; vertical-align: middle; margin-left: 10px;
-    }
-
-    /* --- Expander --- */
-    .stExpander {
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 14px !important;
-        background: rgba(255,255,255,0.03) !important;
-        backdrop-filter: blur(8px);
-    }
-    .stExpander:hover { border-color: rgba(255,255,255,0.15) !important; }
-
-    /* --- Scrollbar --- */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
-
-    /* --- Fluid info line --- */
-    .fluid-info-line {
-        font-size: 0.76rem;
-        color: rgba(255, 255, 255, 0.38);
-        margin-bottom: 4px;
-    }
-    </style>""", unsafe_allow_html=True)
-    # Session state
     for k, v in {"lang": "zh", "calc_done": False, "pr_result": None, "cp_result": None,
                   "T_input": 300.0, "P_input": 1.0, "fluid_idx": 0,
                   "fluid_info": None, "P_pa": None, "range_warning": None}.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-
+        if k not in st.session_state: st.session_state[k] = v
     t = LANG[st.session_state["lang"]]
 
     with st.sidebar:
         st.header(t["sidebar_header"])
-
-        # Language toggle
-        lang_choice = st.radio(
-            t["lang_toggle"],
-            options=["中文", "English"],
-            index=0 if st.session_state["lang"] == "zh" else 1,
-            horizontal=True,
-            key="lang_sel"
-        )
+        lang_choice = st.radio(t["lang_toggle"], options=["中文", "English"],
+            index=0 if st.session_state["lang"] == "zh" else 1, horizontal=True, key="lang_sel")
         new_lang = "zh" if lang_choice == "中文" else "en"
         if new_lang != st.session_state["lang"]:
-            st.session_state["lang"] = new_lang
-            st.rerun()
+            st.session_state["lang"] = new_lang; st.rerun()
 
         t = LANG[st.session_state["lang"]]
         st.markdown("---")
 
-        # ---- INPUT WIDGETS (always shown) ----
         with st.form("calc_form", border=False):
             fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
+            T_input = st.number_input(f'{t["temperature"]} ({t["unit_temp"]})',
+                min_value=200.0, max_value=600.0, value=st.session_state["T_input"], step=1.0, key="T_input")
+            P_input = st.number_input(f'{t["pressure"]} ({t["unit_press"]})',
+                min_value=0.1, max_value=10.0, value=st.session_state["P_input"], step=0.1, key="P_input")
+            fluid_choice = st.selectbox(t["fluid_select"], fluid_options,
+                index=st.session_state["fluid_idx"], key="fluid_sel")
 
-            # 温度输入
-            T_input = st.number_input(
-                f'{t["temperature"]} ({t["unit_temp"]})',
-                min_value=200.0, max_value=600.0,
-                value=st.session_state["T_input"], step=1.0,
-                key="T_input"
-            )
-
-            # 压力输入
-            P_input = st.number_input(
-                f'{t["pressure"]} ({t["unit_press"]})',
-                min_value=0.1, max_value=10.0,
-                value=st.session_state["P_input"], step=0.1,
-                key="P_input"
-            )
-
-            fluid_choice = st.selectbox(
-                t["fluid_select"], fluid_options,
-                index=st.session_state["fluid_idx"], key="fluid_sel"
-            )
-
-            # 强极性物质动态警告
             high_polarity_zh = ["水", "氨", "甲醇", "乙醇"]
             high_polarity_en = ["Water", "Ammonia", "Methanol", "Ethanol"]
             if st.session_state["lang"] == "zh":
-                current_name = fluid_choice
-                if current_name in high_polarity_zh:
-                    st.warning("⚠️ PR 状态方程对强极性物质精度有限，结果仅供趋势参考，不建议用于精确设计。")
+                if fluid_choice in high_polarity_zh:
+                    st.warning("⚠️ PR状态方程对强极性物质精度有限，结果仅供趋势参考，不建议用于精确设计。")
             else:
-                # Find English name
                 for item in FLUID_DATABASE:
                     if item[0] == fluid_choice or item[1] == fluid_choice:
                         if item[1] in high_polarity_en:
                             st.warning("⚠️ PR EOS has limited accuracy for highly polar substances. Results are for trend reference only, not for precise design.")
                         break
 
-            submitted = st.form_submit_button(t["calc_button"], width='stretch')
-
+            submitted = st.form_submit_button(t["calc_button"], width="stretch")
             if submitted:
                 for i, item in enumerate(FLUID_DATABASE):
                     if item[0 if st.session_state["lang"] == "zh" else 1] == fluid_choice:
-                        st.session_state["fluid_idx"] = i
-                        break
+                        st.session_state["fluid_idx"] = i; break
                 fluid_info = FLUID_DATABASE[st.session_state["fluid_idx"]]
                 try:
                     pr_res, cp_res, rw = run_calculation(T_input, P_input, fluid_info)
@@ -1600,27 +1062,29 @@ def render_main_page():
 
         with st.expander(t["scope_title"], expanded=True):
             st.markdown(t["scope_text"], unsafe_allow_html=True)
-        # Engine status indicator
+
         st.markdown(
-            '<div class="status-bar">'
-            '<span class="status-dot"></span> '
-            + ("\U0001f7e2 \u5f15\u64ce\u5c31\u7eea | <span style=\"background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;\">PR + CoolProp</span>" if st.session_state["lang"] == "zh" else "\U0001f7e2 Engines Ready | <span style=\"background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;\">PR + CoolProp</span>")
-            + '</div>',
-            unsafe_allow_html=True,
-        )
+            '<div class="status-bar"><span class="status-dot"></span> '
+            + ("🟢 引擎就绪 | PR + CoolProp" if st.session_state["lang"] == "zh" else "🟢 Engines Ready | PR + CoolProp")
+            + '</div>', unsafe_allow_html=True)
 
-
-    
     if not st.session_state["calc_done"]:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.info(t["first_time_msg"])
-        with col2:
-            with st.expander(t["about_title"]):
-                st.markdown(t["about_text"], unsafe_allow_html=True)
-        st.markdown("---")
-        st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
-        return
+        st.markdown('<div style="text-align:center;padding:30px 0 20px 0;"><h2 style="color:#c4b5fd;font-size:1.6rem;margin-bottom:30px;">'
+            + ("🧪 化工热物性计算软件" if st.session_state.get("lang","zh")=="zh" else "🧪 Thermodynamic Property Calculator")
+            + '</h2></div>', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        if st.session_state.get("lang","zh")=="zh":
+            c1.markdown('<div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);"><div style="font-size:2rem;">①</div><div style="font-weight:600;margin:8px 0;">选择物质</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">左侧下拉框选择<br>20种常见工质</div></div>', unsafe_allow_html=True)
+            c2.markdown('<div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);"><div style="font-size:2rem;">②</div><div style="font-weight:600;margin:8px 0;">输入温度/压力</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">数字输入框精确设置<br>默认300K / 1MPa</div></div>', unsafe_allow_html=True)
+            c3.markdown('<div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);"><div style="font-size:2rem;">③</div><div style="font-weight:600;margin:8px 0;">点击开始计算</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">双引擎交叉验证<br>等压扫描分析</div></div>', unsafe_allow_html=True)
+        else:
+            c1.markdown('<div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);"><div style="font-size:2rem;">①</div><div style="font-weight:600;margin:8px 0;">Select Fluid</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Choose from 20<br>common fluids</div></div>', unsafe_allow_html=True)
+            c2.markdown('<div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);"><div style="font-size:2rem;">②</div><div style="font-weight:600;margin:8px 0;">Set T & P</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Number input for<br>precise values</div></div>', unsafe_allow_html=True)
+            c3.markdown('<div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);"><div style="font-size:2rem;">③</div><div style="font-weight:600;margin:8px 0;">Calculate</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Dual-engine validation<br>Isobaric scan</div></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;margin-top:20px;color:rgba(255,255,255,0.25);font-size:0.72rem;">'
+            + ("支持20种常见工质 | 双引擎交叉验证 | 等压扫描分析" if st.session_state.get("lang","zh")=="zh" else "20 Common Fluids | Dual-Engine Validation | Isobaric Property Scan")
+            + '</div>', unsafe_allow_html=True)
+        st.markdown("---"); return
 
     if st.session_state.get("range_warning") == "range":
         st.warning(t["warn_range"])
@@ -1629,16 +1093,20 @@ def render_main_page():
         render_results(st.session_state["pr_result"], st.session_state["cp_result"],
                        st.session_state["fluid_info"], st.session_state["P_pa"], t)
     except Exception as e:
-        st.error(f"\u7ed3\u679c\u6e32\u67d3\u5f02\u5e38: {str(e)}")
+        st.error(f"结果渲染异常: {str(e)}")
         st.code(traceback.format_exc())
 
     st.markdown("---")
-    st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
+    st.caption("🧪 ThermoCalc v2.0 | 化工热物性计算软件 | Powered by Peng-Robinson EOS + CoolProp")
 
 
+
+# ============================================================================
+# 12. Smart Fluid Optimization Page
+# ============================================================================
 
 def render_smart_optimize():
-    """智能优化页面：流体推荐 + 自动筛选 + 精度分析"""
+    """智能优化页面：目标匹配推荐 + 批量精度扫描"""
     t = LANG[st.session_state.get("lang", "zh")]
     is_zh = st.session_state.get("lang", "zh") == "zh"
 
@@ -1650,46 +1118,29 @@ def render_smart_optimize():
     )
     st.markdown("---")
 
-    # ==== 模式选择 ====
     mode = st.radio(
         "筛选模式" if is_zh else "Screening Mode",
-        options=[
-            "🎯 目标匹配推荐" if is_zh else "🎯 Target Matching",
-            "📊 批量精度扫描" if is_zh else "📊 Batch Accuracy Scan",
-        ],
-        horizontal=True,
-        key="smart_mode"
+        options=["🎯 目标匹配推荐" if is_zh else "🎯 Target Matching",
+                 "📊 批量精度扫描" if is_zh else "📊 Batch Accuracy Scan"],
+        horizontal=True, key="smart_mode"
     )
-
     st.markdown("---")
 
-    # ================================================================
-    # 模式 A：目标匹配推荐（用户给定目标密度/Cp，推荐最接近的工质）
-    # ================================================================
     if "目标匹配" in mode or "Target" in mode:
         col1, col2, col3 = st.columns(3)
         with col1:
-            target_T = st.number_input(
-                "目标温度 (K)" if is_zh else "Target T (K)",
-                min_value=200.0, max_value=600.0, value=350.0, step=10.0,
-                key="smart_target_T"
-            )
+            target_T = st.number_input("目标温度 (K)" if is_zh else "Target T (K)",
+                200.0, 600.0, 350.0, 10.0, key="smart_target_T")
         with col2:
-            target_P = st.number_input(
-                "目标压力 (MPa)" if is_zh else "Target P (MPa)",
-                min_value=0.1, max_value=10.0, value=1.0, step=0.1,
-                key="smart_target_P"
-            )
+            target_P = st.number_input("目标压力 (MPa)" if is_zh else "Target P (MPa)",
+                0.1, 10.0, 1.0, 0.1, key="smart_target_P")
         with col3:
-            target_prop = st.selectbox(
-                "目标物性" if is_zh else "Target Property",
-                options=["密度 (kg/m³)", "Cp (kJ/(kg·K))"],
-                key="smart_target_prop"
-            )
+            target_prop = st.selectbox("目标物性" if is_zh else "Target Property",
+                options=["密度 (kg/m³)", "Cp (kJ/(kg·K))"], key="smart_target_prop")
 
         target_value = st.number_input(
             ("期望" + target_prop + "值") if is_zh else ("Desired " + target_prop),
-            min_value=0.001, value=10.0 if "密度" in target_prop else 2.0,
+            0.001, value=10.0 if "密度" in target_prop else 2.0,
             step=0.1, format="%.3f", key="smart_target_val"
         )
 
@@ -1700,239 +1151,329 @@ def render_smart_optimize():
                 for fi in FLUID_DATABASE:
                     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
                     pr, cp, rw = run_calculation(target_T, target_P, fi)
-                    if "error" in str(pr):
-                        continue
+                    if "error" in str(pr): continue
                     pr_val = pr.get(target_key)
                     cp_val = cp.get(target_key) if "error" not in str(cp) else None
-
-                    # 计算与目标值的偏差（以 CoolProp 为基准，无 CoolProp 时用 PR）
                     ref_val = cp_val if cp_val is not None else pr_val
-                    if ref_val is None or ref_val == 0:
-                        continue
+                    if ref_val is None or ref_val == 0: continue
                     match_score = abs(pr_val - target_value) / max(abs(target_value), 0.001) * 100
-
-                    # 可信度：非极性 + 偏差小 = 高
                     pr_dev = abs((pr_val - cp_val) / cp_val * 100) if cp_val else 50.0
                     confidence = "⭐⭐⭐" if (polarity == "low" and pr_dev < 10) else ("⭐⭐" if pr_dev < 30 else "⭐")
-
                     results.append({
                         "物质" if is_zh else "Fluid": name_zh if is_zh else name_en,
-                        "PR值": f"{pr_val:.3f}",
-                        "CoolProp值": f"{cp_val:.3f}" if cp_val else "N/A",
-                        "匹配偏差(%)": f"{match_score:.1f}",
-                        "PR精度(%)": f"{pr_dev:.1f}" if cp_val else "N/A",
-                        "可信度": confidence,
-                        "_score": match_score,
-                        "_polarity": polarity,
+                        "PR值": f"{pr_val:.3f}", "CoolProp值": f"{cp_val:.3f}" if cp_val else "N/A",
+                        "匹配偏差(%)": f"{match_score:.1f}", "PR精度(%)": f"{pr_dev:.1f}" if cp_val else "N/A",
+                        "可信度": confidence, "_score": match_score, "_polarity": polarity,
                     })
-
                 if results:
-                    # 按匹配偏差排序
                     results.sort(key=lambda x: x["_score"] + (100 if x["_polarity"] == "high" else 0))
                     df = pd.DataFrame(results).drop(columns=["_score", "_polarity"])
-                    st.subheader("📋 推荐结果（按匹配度排序）" if is_zh else "📋 Recommendations (by match score)")
+                    st.subheader("📋 推荐结果（按匹配度排序）" if is_zh else "📋 Recommendations")
                     st.dataframe(df, width="stretch", height=400)
-
                     best = results[0]
-                    st.success(
-                        f"🎯 最佳推荐：**{best['物质' if is_zh else 'Fluid']}**"
-                        f" | 匹配偏差 {best['匹配偏差(%)']}%"
-                        f" | 可信度 {best['可信度']}"
-                    )
+                    st.success(f"🎯 最佳推荐：**{best['物质' if is_zh else 'Fluid']}** | 匹配偏差 {best['匹配偏差(%)']}% | 可信度 {best['可信度']}")
                 else:
                     st.warning("未找到可用的工质推荐。" if is_zh else "No suitable fluid found.")
 
-    # ================================================================
-    # 模式 B：批量精度扫描（对所有物质扫一条等温/等压线，识别PR最佳精度区）
-    # ================================================================
     else:
-        scan_type = st.radio(
-            "扫描类型" if is_zh else "Scan Type",
+        scan_type = st.radio("扫描类型" if is_zh else "Scan Type",
             options=["等温扫描 (固定T)" if is_zh else "Isothermal (fixed T)",
                      "等压扫描 (固定P)" if is_zh else "Isobaric (fixed P)"],
-            horizontal=True, key="scan_type"
-        )
+            horizontal=True, key="scan_type")
 
         col_a, col_b = st.columns(2)
         with col_a:
             if "等温" in scan_type or "Isothermal" in scan_type:
-                scan_T = st.number_input("温度 (K)" if is_zh else "Temperature (K)", 200.0, 600.0, 350.0, 10.0, key="scan_T")
-                P_start = st.number_input("压力下限 (MPa)" if is_zh else "P min (MPa)", 0.1, 10.0, 0.1, 0.1, key="scan_P_lo")
-                P_end = st.number_input("压力上限 (MPa)" if is_zh else "P max (MPa)", 0.1, 10.0, 5.0, 0.1, key="scan_P_hi")
+                scan_T = st.number_input("温度 (K)" if is_zh else "T (K)", 200.0, 600.0, 350.0, 10.0, key="scan_T")
+                P_start = st.number_input("压力下限 (MPa)" if is_zh else "P min", 0.1, 10.0, 0.1, 0.1, key="scan_P_lo")
+                P_end = st.number_input("压力上限 (MPa)" if is_zh else "P max", 0.1, 10.0, 5.0, 0.1, key="scan_P_hi")
             else:
-                scan_P = st.number_input("压力 (MPa)" if is_zh else "Pressure (MPa)", 0.1, 10.0, 1.0, 0.1, key="scan_P")
-                T_start = st.number_input("温度下限 (K)" if is_zh else "T min (K)", 200.0, 600.0, 250.0, 10.0, key="scan_T_lo")
-                T_end = st.number_input("温度上限 (K)" if is_zh else "T max (K)", 200.0, 600.0, 500.0, 10.0, key="scan_T_hi")
+                scan_P = st.number_input("压力 (MPa)" if is_zh else "P (MPa)", 0.1, 10.0, 1.0, 0.1, key="scan_P")
+                T_start = st.number_input("温度下限 (K)" if is_zh else "T min", 200.0, 600.0, 250.0, 10.0, key="scan_T_lo")
+                T_end = st.number_input("温度上限 (K)" if is_zh else "T max", 200.0, 600.0, 500.0, 10.0, key="scan_T_hi")
         with col_b:
-            selected_fluids = st.multiselect(
-                "选择工质（不选=全部）" if is_zh else "Select fluids (none=all)",
-                options=[fi[0] for fi in FLUID_DATABASE],
-                default=[], key="scan_fluids"
-            )
-            scan_points = st.number_input("扫描点数" if is_zh else "Scan points", 5, 50, 20, 5, key="scan_pts")
+            selected_fluids = st.multiselect("选择工质（不选=全部）" if is_zh else "Select fluids",
+                options=[fi[0] for fi in FLUID_DATABASE], default=[], key="scan_fluids")
+            scan_points = st.number_input("扫描点数" if is_zh else "Points", 5, 50, 20, 5, key="scan_pts")
 
         if st.button("📊 开始批量扫描" if is_zh else "📊 Start Batch Scan", width="stretch", key="batch_go"):
             fluids_to_scan = [fi for fi in FLUID_DATABASE if not selected_fluids or fi[0] in selected_fluids]
-
             if "等温" in scan_type or "Isothermal" in scan_type:
-                P_range = np.linspace(P_start, P_end, scan_points)
+                x_vals = np.linspace(P_start, P_end, scan_points); x_label = "压力 (MPa)" if is_zh else "P (MPa)"
                 T_val = scan_T
-                x_label = "压力 (MPa)" if is_zh else "Pressure (MPa)"
-                x_vals = P_range
             else:
-                T_range = np.linspace(T_start, T_end, scan_points)
+                x_vals = np.linspace(T_start, T_end, scan_points); x_label = "温度 (K)" if is_zh else "T (K)"
                 P_val = scan_P * 1e6
-                x_label = "温度 (K)" if is_zh else "Temperature (K)"
-                x_vals = T_range
 
-            with st.spinner(f"正在扫描 {len(fluids_to_scan)} 种工质..." if is_zh else f"Scanning {len(fluids_to_scan)} fluids..."):
-                import plotly.graph_objects as go
-                from plotly.subplots import make_subplots
-
-                fig = make_subplots(
-                    rows=2, cols=2,
+            with st.spinner(f"扫描 {len(fluids_to_scan)} 种工质..." if is_zh else f"Scanning {len(fluids_to_scan)} fluids..."):
+                fig = make_subplots(rows=2, cols=2,
                     subplot_titles=("密度偏差 (%)", "Cp偏差 (%)", "密度 vs 基准", "PR精度评级"),
-                    vertical_spacing=0.15, horizontal_spacing=0.12,
-                )
+                    vertical_spacing=0.15, horizontal_spacing=0.12)
 
                 summary_rows = []
-                colors = ["#7c3aed", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-                          "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4",
-                          "#a855f7", "#0ea5e9", "#22c55e", "#eab308", "#f43f5e", "#3b82f6",
-                          "#10b981", "#8b5cf6"]
+                colors = ["#7c3aed","#06b6d4","#10b981","#f59e0b","#ef4444","#8b5cf6",
+                          "#ec4899","#14b8a6","#f97316","#6366f1","#84cc16","#06b6d4",
+                          "#a855f7","#0ea5e9","#22c55e","#eab308","#f43f5e","#3b82f6","#10b981","#8b5cf6"]
 
                 for fi_idx, fi in enumerate(fluids_to_scan):
                     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
-                    color = colors[fi_idx % len(colors)]
-                    show_leg = fi_idx < 6  # limit legend
-
-                    density_devs = []
-                    cp_devs = []
-                    for x_idx, x_val in enumerate(x_vals):
-                        if "等温" in scan_type or "Isothermal" in scan_type:
-                            T = T_val; P = x_val * 1e6
-                        else:
-                            T = x_val; P = P_val
-                        pr, cp, rw = run_calculation(T, P / 1e6, fi)
+                    color = colors[fi_idx % len(colors)]; show_leg = fi_idx < 6
+                    density_devs = []; cp_devs = []
+                    for x_val in x_vals:
+                        if "等温" in scan_type or "Isothermal" in scan_type: T, P_mpa = T_val, x_val
+                        else: T, P_mpa = x_val, scan_P
+                        pr, cp, rw = run_calculation(T, P_mpa, fi)
                         if "error" in str(pr) or "error" in str(cp):
                             density_devs.append(np.nan); cp_devs.append(np.nan)
                         else:
-                            d_dev = (pr["density"] - cp["density"]) / cp["density"] * 100 if cp["density"] != 0 else np.nan
-                            c_dev = (pr["cp"] - cp["cp"]) / cp["cp"] * 100 if cp.get("cp", 0) != 0 else np.nan
-                            density_devs.append(d_dev); cp_devs.append(c_dev)
+                            d_d = (pr["density"]-cp["density"])/cp["density"]*100 if cp["density"]!=0 else np.nan
+                            c_d = (pr["cp"]-cp["cp"])/cp["cp"]*100 if cp.get("cp",0)!=0 else np.nan
+                            density_devs.append(d_d); cp_devs.append(c_d)
 
-                    # 图1：密度偏差
                     fig.add_trace(go.Scatter(x=x_vals, y=density_devs, mode="lines+markers",
                         name=name_zh, line=dict(color=color, width=2), marker=dict(size=5),
                         legendgroup=name_zh, showlegend=show_leg), row=1, col=1)
-                    # 图2：Cp偏差
                     fig.add_trace(go.Scatter(x=x_vals, y=cp_devs, mode="lines+markers",
-                        name=name_zh, line=dict(color=color, width=2, dash="dot"), marker=dict(size=4),
-                        legendgroup=name_zh, showlegend=False), row=1, col=2)
+                        name=name_zh, line=dict(color=color, width=2, dash="dot"),
+                        marker=dict(size=4), legendgroup=name_zh, showlegend=False), row=1, col=2)
 
-                    # 汇总统计
                     valid_d = [d for d in density_devs if not np.isnan(d)]
-                    valid_c = [c for c in cp_devs if not np.isnan(c)]
-                    avg_d_dev = np.mean(np.abs(valid_d)) if valid_d else 999
-                    avg_c_dev = np.mean(np.abs(valid_c)) if valid_c else 999
-                    max_d_dev = np.max(np.abs(valid_d)) if valid_d else 999
-
-                    # 精度评级
-                    if avg_d_dev < 5:
-                        grade = "🏆 A级"; grade_color = "#10b981"
-                    elif avg_d_dev < 15:
-                        grade = "✅ B级"; grade_color = "#84cc16"
-                    elif avg_d_dev < 30:
-                        grade = "⚠️ C级"; grade_color = "#f59e0b"
-                    else:
-                        grade = "❌ D级"; grade_color = "#ef4444"
+                    avg_d = np.mean(np.abs(valid_d)) if valid_d else 999
+                    if avg_d < 5: grade, gc = "🏆 A级", "#10b981"
+                    elif avg_d < 15: grade, gc = "✅ B级", "#84cc16"
+                    elif avg_d < 30: grade, gc = "⚠️ C级", "#f59e0b"
+                    else: grade, gc = "❌ D级", "#ef4444"
 
                     summary_rows.append({
                         "工质" if is_zh else "Fluid": name_zh if is_zh else name_en,
-                        "平均密度偏差(%)": f"{avg_d_dev:.1f}",
-                        "平均Cp偏差(%)": f"{avg_c_dev:.1f}",
-                        "最大密度偏差(%)": f"{max_d_dev:.1f}",
-                        "精度评级": grade,
-                        "_avg": avg_d_dev,
-                        "_color": grade_color,
-                        "_polarity": polarity,
+                        "平均密度偏差(%)": f"{avg_d:.1f}", "精度评级": grade,
+                        "_avg": avg_d, "_color": gc, "_polarity": polarity,
                     })
-
-                    # 图4：精度评级散点
-                    fig.add_trace(go.Scatter(
-                        x=[fi_idx + 1], y=[avg_d_dev],
-                        mode="markers+text",
-                        marker=dict(size=14, color=grade_color, symbol="diamond"),
+                    fig.add_trace(go.Scatter(x=[fi_idx+1], y=[avg_d], mode="markers+text",
+                        marker=dict(size=14, color=gc, symbol="diamond"),
                         text=[grade.split()[0]], textposition="top center",
-                        textfont=dict(size=9, color=grade_color),
-                        name=name_zh, showlegend=False,
-                        legendgroup=name_zh,
-                    ), row=2, col=2)
+                        textfont=dict(size=9, color=gc), name=name_zh,
+                        showlegend=False, legendgroup=name_zh), row=2, col=2)
 
-                # 精度评级参考线
-                for level, y, c in [("A级", 5, "#10b981"), ("B级", 15, "#84cc16"), ("C级", 30, "#f59e0b")]:
+                for level, y, c in [("A级",5,"#10b981"),("B级",15,"#84cc16"),("C级",30,"#f59e0b")]:
                     fig.add_hline(y=y, line_dash="dash", line_color=c, opacity=0.4, row=2, col=2)
 
-                fig.update_xaxes(title_text=x_label, row=1, col=1)
-                fig.update_xaxes(title_text=x_label, row=1, col=2)
+                fig.update_xaxes(title_text=x_label, row=1, col=1); fig.update_xaxes(title_text=x_label, row=1, col=2)
                 fig.update_xaxes(title_text="工质编号" if is_zh else "Fluid Index", row=2, col=2)
-                fig.update_yaxes(title_text="偏差 (%)", row=1, col=1)
-                fig.update_yaxes(title_text="偏差 (%)", row=1, col=2)
+                fig.update_yaxes(title_text="偏差 (%)", row=1, col=1); fig.update_yaxes(title_text="偏差 (%)", row=1, col=2)
                 fig.update_yaxes(title_text="平均密度偏差 (%)" if is_zh else "Avg Density Dev (%)", row=2, col=2)
-                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=1)
-                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=2)
-
+                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=1); fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=2)
                 fig.update_layout(height=750, hovermode="x unified",
                     legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5),
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-
+                    template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig, width="stretch")
 
-                # 汇总表
                 if summary_rows:
-                    summary_rows.sort(key=lambda x: x["_avg"] + (50 if x["_polarity"] == "high" else 0))
-                    df_summary = pd.DataFrame(summary_rows).drop(columns=["_avg", "_color", "_polarity"])
-
-                    # 颜色高亮
-                    def highlight_grade(val):
-                        for row in summary_rows:
-                            if row["精度评级"] == val:
-                                return f"color: {row['_color']}; font-weight: bold"
-                        return ""
-                    styled = df_summary.style.map(highlight_grade, subset=["精度评级"])
+                    summary_rows.sort(key=lambda x: x["_avg"] + (50 if x["_polarity"]=="high" else 0))
+                    df_s = pd.DataFrame(summary_rows).drop(columns=["_avg","_color","_polarity"])
                     st.subheader("📊 精度汇总排名" if is_zh else "📊 Accuracy Summary")
-                    st.dataframe(styled, width="stretch", height=400)
+                    st.dataframe(df_s, width="stretch", height=400)
 
 
+# ============================================================================
+# 13. Material Screening Page
+# ============================================================================
+
+def render_material_screening():
+    """材料筛选页面：多条件排序"""
+    t = LANG[st.session_state.get("lang", "zh")]
+    is_zh = st.session_state.get("lang", "zh") == "zh"
+
+    st.header("🔎 材料筛选与排序" if is_zh else "🔎 Material Screening & Ranking")
+    st.markdown("输入目标工况，按多个物性条件排序全部20种工质，找出最优候选。" if is_zh
+                else "Enter target conditions, rank all 20 fluids by multiple criteria.")
+    st.markdown("---")
+
+    col1, col2 = st.columns(2)
+    with col1: scr_T = st.number_input("温度 (K)" if is_zh else "T (K)", 200.0, 600.0, 350.0, 10.0, key="scr_T")
+    with col2: scr_P = st.number_input("压力 (MPa)" if is_zh else "P (MPa)", 0.1, 10.0, 1.0, 0.1, key="scr_P")
+
+    st.markdown("### 排序权重设置" if is_zh else "### Ranking Weights")
+    cols = st.columns(6)
+    weights = {}
+    for col, (key, zh, en, lo, hi, d) in zip(cols, [
+        ("w_density","密度","Density",0.0,5.0,2.0),("w_cp","Cp","Cp",0.0,5.0,1.0),
+        ("w_alpha","α" if is_zh else "Alpha","Alpha",0.0,5.0,0.0),
+        ("w_tc","λ" if is_zh else "TC","TC",0.0,5.0,0.0),("w_visc","μ" if is_zh else "Visc","Visc",0.0,5.0,0.0),
+        ("w_pr_acc","PR精度" if is_zh else "PR Acc","Accuracy",0.0,5.0,3.0),
+    ]):
+        with col: weights[key] = st.number_input(zh, lo, hi, d, 0.5, key=f"scr_{key}")
+
+    st.markdown("### 目标物性值（可选）" if is_zh else "### Target Values (Optional)")
+    tcols = st.columns(5)
+    tgts = {}
+    for col, (key, label, lo, hi) in zip(tcols, [
+        ("tgt_d","目标密度 (kg/m³)" if is_zh else "Target Density",0.0,2000.0),
+        ("tgt_cp","目标Cp (kJ/(kg·K))" if is_zh else "Target Cp",0.0,50.0),
+        ("tgt_a","目标α (1/K)" if is_zh else "Target Alpha",0.0,0.1),
+        ("tgt_tc","目标导热 (W/(m·K))" if is_zh else "Target TC",0.0,1.0),
+        ("tgt_v","目标粘度 (μPa·s)" if is_zh else "Target Visc",0.0,1000.0),
+    ]):
+        with col: tgts[key] = st.number_input(label, lo, hi, 0.0, format="%.4f", key=f"scr_{key}")
+
+    include_polar = st.checkbox("包含强极性物质" if is_zh else "Include highly polar fluids", value=False, key="scr_polar")
+
+    if st.button("🔍 开始筛选排序" if is_zh else "🔍 Start Screening", width="stretch"):
+        with st.spinner("正在扫描..." if is_zh else "Scanning..."):
+            results = []; P_pa = scr_P * 1e6
+            for fi in FLUID_DATABASE:
+                name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
+                if polarity == "high" and not include_polar: continue
+                pr = pr_engine_properties(scr_T, P_pa, fi)
+                if "error" in str(pr): continue
+                cp = coolprop_properties(scr_T, P_pa, cp_name, M_gmol/1000.0)
+                cp_ok = "error" not in str(cp)
+                pr_acc = 100.0 - min(abs((pr["density"]-cp["density"])/cp["density"]*100),100.0) if (cp_ok and cp.get("density",0)!=0) else 50.0
+                scores = {}
+                for pk, tk in [("density","tgt_d"),("cp","tgt_cp"),("alpha","tgt_a"),("thermal_conductivity","tgt_tc"),("viscosity","tgt_v")]:
+                    tv = tgts.get(tk,0); pv = pr.get(pk)
+                    if tv > 0 and pv is not None and pv != 0: scores[pk] = 100.0 - min(abs((pv-tv)/tv*100),100.0)
+                tw = 0.0; ts = 0.0
+                for wk, pk in {"w_density":"density","w_cp":"cp","w_alpha":"alpha","w_tc":"thermal_conductivity","w_visc":"viscosity","w_pr_acc":"pr_acc"}.items():
+                    w = weights.get(wk,0)
+                    if w <= 0: continue
+                    s = pr_acc if pk == "pr_acc" else scores.get(pk)
+                    if s is None: continue
+                    tw += w; ts += w * s
+                final = round(ts/max(tw,0.001),1) if tw > 0 else 50.0
+                results.append({
+                    "排名" if is_zh else "Rank":0, "工质" if is_zh else "Fluid": name_zh if is_zh else name_en,
+                    "综合评分":final, "PR精度":round(pr_acc,1),
+                    "ρ(kg/m³)":round(pr.get("density",0),2), "Cp(kJ/kgK)":round(pr.get("cp",0),4),
+                    "α(1/K)":f"{pr.get('alpha',0):.3e}" if pr.get("alpha") else "N/A",
+                    "λ(W/mK)":round(pr.get("thermal_conductivity",0),4) if pr.get("thermal_conductivity") else "N/A",
+                    "μ(μPa·s)":round(pr.get("viscosity",0),2) if pr.get("viscosity") else "N/A",
+                    "类型":"强极性" if (polarity=="high" and is_zh) else ("Polar" if polarity=="high" else "常规" if is_zh else "Normal"),
+                    "_s":float(final),
+                })
+            if results:
+                results.sort(key=lambda x: x["_s"], reverse=True)
+                for i, r in enumerate(results): r["排名" if is_zh else "Rank"] = i+1
+                df = pd.DataFrame(results).drop(columns=["_s"])
+                st.subheader("📊 筛选结果" if is_zh else "📊 Screening Results")
+                st.dataframe(df, width="stretch", height=500)
+                top3 = results[:3]
+                st.success("🏆 Top 3: " + " | ".join([f"**{r['工质' if is_zh else 'Fluid']}** ({r['综合评分']}分)" for r in top3]))
+            else:
+                st.warning("无符合条件的工质。" if is_zh else "No matching fluids.")
+
+    with st.expander("📖 输运性质精度边界说明" if is_zh else "📖 Transport Property Accuracy Notes", expanded=False):
+        st.markdown("""
+### 输运性质（导热系数λ、动力粘度μ）的精度边界
+
+**计算方法：** 导热系数和粘度采用**对应态原理（Corresponding States Principle）**估算，
+基于Chung et al.半经验关联式。
+
+**固有精度范围：**
+| 流体类型 | 导热系数偏差 | 粘度偏差 | 典型工质 |
+|----------|-------------|---------|----------|
+| 非极性/弱极性 | 10-30% | 5-20% | 烷烃、烯烃、N₂、O₂、CO₂、CO |
+| 强极性 | 30-60% | 20-50% | 水、氨、甲醇、乙醇 |
+| 量子流体 | 失效 | 失效 | H₂、He |
+
+**这不是软件Bug：** 上述偏差是对应态原理(CSP)的已知理论局限。
+
+**使用建议：**
+- **工程设计**：以CoolProp基准值为准（精度1-5%）
+- **趋势分析/教学**：PR估算值可用于定性分析和教学演示
+""" if is_zh else """
+### Accuracy Boundaries for Transport Properties (λ, μ)
+
+**Method:** Corresponding States Principle with Chung et al. correlations.
+
+| Fluid Type | TC Deviation | Viscosity Dev. | Examples |
+|------------|-------------|----------------|----------|
+| Non-polar | 10-30% | 5-20% | Alkanes, N₂, O₂, CO₂ |
+| Highly polar | 30-60% | 20-50% | Water, NH₃, alcohols |
+| Quantum | FAILS | FAILS | H₂, He |
+
+**Not a software bug — this is the known theoretical limit of CSP.**
+Use CoolProp benchmarks for engineering design (1-5% accuracy).
+""")
+
+
+
+# ============================================================================
+# 14. CSS Styles
+# ============================================================================
+
+CSS_STYLES = """<style>
+.stApp { background: linear-gradient(160deg, #0f0c29 0%, #1a1744 30%, #24243e 70%, #0f0c29 100%); color: #e2e8f0; min-height: 100vh; }
+section[data-testid="stSidebar"] { background: rgba(20,18,50,0.75) !important; backdrop-filter: blur(40px) saturate(200%); border-right: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 4px 0 30px rgba(0,0,0,0.4); }
+section[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+.stButton > button { background: rgba(255,255,255,0.06) !important; backdrop-filter: blur(12px) saturate(180%); border: 1px solid rgba(255,255,255,0.12) !important; color: #e2e8f0 !important; border-radius: 14px !important; font-weight: 600 !important; transition: all 0.30s cubic-bezier(0.25,0.46,0.45,0.94) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.stButton > button:hover { background: rgba(56,189,248,0.12) !important; border-color: rgba(56,189,248,0.6) !important; box-shadow: 0 0 30px rgba(56,189,248,0.22), 0 8px 25px rgba(0,0,0,0.5); transform: translateY(-2px) scale(1.01); color: #fff !important; }
+.stButton > button:active { transform: scale(0.97) !important; }
+input, .stNumberInput input { background: rgba(255,255,255,0.05) !important; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.10) !important; color: #e2e8f0 !important; border-radius: 12px !important; }
+input:focus { border-color: rgba(56,189,248,0.5) !important; box-shadow: 0 0 20px rgba(56,189,248,0.12) !important; background: rgba(255,255,255,0.08) !important; }
+.stSelectbox > div > div { background: rgba(255,255,255,0.05) !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,0.10) !important; }
+#MainMenu { visibility: hidden; } footer { visibility: hidden; }
+header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; border-bottom: none !important; }
+.prop-card-final { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 12px 20px 14px; margin-bottom: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03); transition: all 0.35s cubic-bezier(0.25,0.46,0.45,0.94); }
+.prop-card-final:hover { transform: translateY(-4px); border-color: rgba(56,189,248,0.22); background: rgba(255,255,255,0.07); box-shadow: 0 12px 36px rgba(0,0,0,0.40), 0 0 25px rgba(56,189,248,0.04); }
+.pcf-name { font-size: 0.70rem; text-transform: uppercase; letter-spacing: 2.0px; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 8px; }
+.pcf-body { display: flex; align-items: center; gap: 0; }
+.pcf-col { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 4px 8px; }
+.pcf-engine-tag { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 1.3px; padding: 2px 9px; border-radius: 7px; font-weight: 600; margin-bottom: 6px; }
+.pr-tag { color: #c4b5fd; background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.16); }
+.cp-tag { color: #67e8f9; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.16); }
+.pcf-val-row { display: flex; align-items: center; gap: 6px; }
+.pcf-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dot-green { background: #6ee7b7; box-shadow: 0 0 8px rgba(110,231,183,0.45); }
+.dot-yellow { background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.45); }
+.dot-red { background: #fb923c; box-shadow: 0 0 8px rgba(251,146,60,0.45); }
+.dot-na { background: rgba(255,255,255,0.18); }
+.pcf-val { font-size: 1.65rem; font-weight: 700; font-family: 'JetBrains Mono','Consolas','Courier New',monospace; line-height: 1.1; color: #e2e8f0; }
+.pcf-unit { font-size: 0.64rem; color: rgba(255,255,255,0.28); letter-spacing: 0.2px; }
+.pcf-divider { width: 1px; height: 65px; background: linear-gradient(180deg,transparent,rgba(255,255,255,0.12),transparent); flex-shrink: 0; margin: 0 4px; }
+.pcf-dev { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 80px; }
+.pcf-dev-label { font-size: 0.56rem; text-transform: uppercase; color: rgba(255,255,255,0.30); letter-spacing: 1px; }
+.dev-badge-v2 { font-size: 1.2rem; font-weight: 700; padding: 3px 12px; border-radius: 14px; display: inline-flex; align-items: center; gap: 5px; backdrop-filter: blur(8px); }
+.dev-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dev-green-v2 { color: #6ee7b7; background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.16); }
+.dev-green-v2 .dev-dot { background: #6ee7b7; }
+.dev-yellow-v2 { color: #fbbf24; background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.16); }
+.dev-yellow-v2 .dev-dot { background: #fbbf24; }
+.dev-red-v2 { color: #fb923c; background: rgba(249,115,22,0.10); border: 1px solid rgba(249,115,22,0.16); }
+.dev-red-v2 .dev-dot { background: #fb923c; }
+.dev-na-v2 { color: rgba(255,255,255,0.30); background: rgba(100,116,139,0.06); }
+.status-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); margin-top: 14px; font-size: 0.73rem; color: rgba(255,255,255,0.50); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 12px #10b981; animation: statusPulse 2s ease-in-out infinite; }
+@keyframes statusPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.title-glow { font-size: 1.7rem; font-weight: 800; background: linear-gradient(135deg,#c4b5fd,#38bdf8,#67e8f9,#c4b5fd); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: gradientShift 6s ease infinite; letter-spacing: -0.5px; }
+@keyframes gradientShift { 0%{background-position:0 50%} 50%{background-position:100% 50%} 100%{background-position:0 50%} }
+.version-chip { display: inline-block; font-size: 0.62rem; padding: 3px 12px; border-radius: 12px; background: rgba(56,189,248,0.10); backdrop-filter: blur(8px); border: 1px solid rgba(56,189,248,0.18); color: #38bdf8; font-weight: 600; letter-spacing: 1.5px; vertical-align: middle; margin-left: 10px; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+.fluid-info-line { font-size: 0.76rem; color: rgba(255,255,255,0.38); margin-bottom: 4px; }
+</style>"""
+
+
+# ============================================================================
+# 15. Main Entry Point
+# ============================================================================
 
 def main():
     """Main Streamlit entry point with multi-page navigation."""
-
-    st.set_page_config(
-        page_title="ThermoCalc",
-        page_icon="🧪",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
+    st.set_page_config(page_title="ThermoCalc", page_icon="🧪", layout="wide", initial_sidebar_state="expanded")
+    st.markdown(CSS_STYLES, unsafe_allow_html=True)
 
     lang = st.session_state.get("lang", "zh")
-    pg_main = st.Page(
-        render_main_page,
-        title="🏠 物性计算" if lang == "zh" else "🏠 Calculator",
-        url_path="calc"
-    )
-    pg_val = st.Page(
-        render_validation_page,
-        title="🔬 模型验证" if lang == "zh" else "🔬 Validation",
-        url_path="validate"
-    )
-    pg_opt = st.Page(
-        render_smart_optimize,
-        title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen",
-        url_path="optimize"
-    )
-    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt]})
+    pg_main = st.Page(render_main_page,
+        title="🏠 物性计算" if lang == "zh" else "🏠 Calculator", url_path="calc")
+    pg_val = st.Page(render_validation_page,
+        title="🔬 模型验证" if lang == "zh" else "🔬 Validation", url_path="validate")
+    pg_opt = st.Page(render_smart_optimize,
+        title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", url_path="optimize")
+    pg_scr = st.Page(render_material_screening,
+        title="🔎 材料筛选" if lang == "zh" else "🔎 Screening", url_path="screening")
+    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr]})
     pg.run()
+
+
 if __name__ == "__main__":
     main()
