@@ -15,6 +15,11 @@ from plotly.subplots import make_subplots
 from scipy.optimize import newton
 from typing import Tuple, Dict, Optional, List
 import traceback
+import joblib
+import os
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
 
 # ============================================================================
 # 0. 全局常量
@@ -55,6 +60,9 @@ LANG = {
         "curve_pr": "PR方程(自研)",
         "curve_cp": "CoolProp(基准)",
         "warn_coolprop": "⚠️ CoolProp 查询失败: {}. 已降级使用PR方程。",
+        "nocp_label": "🧪 理论预测值 (待实验验证)",
+        "nocp_warn": "⚠️ 该物质无CoolProp基准数据，以下为自研PR方程理论预测值，仅供趋势参考，待实验验证。",
+        "nocp_badge": "🧪 理论预测",
         "warn_pr_fail": "⚠️ PR方程计算失败: {}",
         "warn_range": "⚠️ 输入温度/压力超出该物质推荐范围, 结果可能不准确。",
         "error_no_fluid": "请选择物质。",
@@ -80,9 +88,57 @@ LANG = {
         "meta_mixture_warning": "当前版本仅支持纯物质计算, 混合物功能正在开发中",
         "meta_page": "页面",
         "meta_main_page": "🏠 物性计算",
+        "inv_solver_mode": "🔍 反向求解 (Inverse Solver)",
+        "inv_solver_desc": "输入目标物性值，自动网格搜索所有满足条件的 (物质, T, P) 组合。",
+        "inv_target_prop": "目标物性",
+        "inv_target_value": "目标值",
+        "inv_tolerance": "允许误差 (%)",
+        "inv_search_btn": "🔍 开始搜索",
+        "inv_searching": "正在网格搜索中...",
+        "inv_results_header": "📋 搜索结果",
+        "inv_no_results": "未找到满足条件的组合，请放宽误差范围。",
+        "inv_found_n": "共找到 {} 个满足条件的组合",
+        "inv_col_rank": "排名",
+        "inv_col_fluid": "物质",
+        "inv_col_T": "温度 (K)",
+        "inv_col_P": "压力 (MPa)",
+        "inv_col_value": "实际值",
+        "inv_col_dev": "偏差 (%)",
+        "inv_col_type": "类型",
+        "inv_best_recommend": "🎯 推荐在 **{} K** 和 **{} MPa** 下使用 **{}** 物质，可达到目标物性。",
+        "inv_grid_T_step": "温度步长 (K)",
+        "inv_grid_P_step": "压力步长 (MPa)",
         "meta_verify_page": "🔬 模型验证",
         "export_btn": "📥 导出报告 (PDF)",
         "export_success": "✅ 报告已生成",
+        "ai_title": "🤖 AI 智能预测",
+        "ai_desc": "基于 RandomForest 机器学习模型，利用已有 PR+CoolProp 数据训练，预测未知工质的密度和定压比热容。",
+        "ai_train_btn": "🔄 训练/更新模型",
+        "ai_train_done": "✅ 模型训练完成",
+        "ai_train_r2": "训练集 R² 分数",
+        "ai_predict_header": "🔮 预测结果",
+        "ai_unknown_mode": "🧪 未知材料探索",
+        "ai_unknown_desc": "手动输入临界参数 (Tc, Pc, ω)，AI 模型直接预测密度和 Cp。无需物质名称。",
+        "ai_tc_input": "临界温度 Tc (K)",
+        "ai_pc_input": "临界压力 Pc (MPa)",
+        "ai_omega_input": "偏心因子 ω",
+        "ai_predict_btn": "🔮 开始预测",
+        "ai_pred_density": "AI 预测密度",
+        "ai_pred_cp": "AI 预测 Cp",
+        "ai_pr_density": "PR 方程密度",
+        "ai_pr_cp": "PR 方程 Cp",
+        "ai_dev_density": "偏差 (密度)",
+        "ai_dev_cp": "偏差 (Cp)",
+        "ai_no_model": "⚠️ 模型尚未训练，请先生成数据集并点击「训练/更新模型」。",
+        "ai_feature_importance": "📊 特征重要性",
+        "ai_model_info": "模型信息",
+        "ai_n_estimators": "决策树数量",
+        "ai_max_depth": "最大深度",
+        "ai_train_samples": "训练样本数",
+        "ai_data_generated": "📊 数据集已生成",
+        "ai_data_samples": "样本数",
+        "ai_data_features": "特征",
+        "ai_data_targets": "目标",
     },
     "en": {
         "title": "🧪 Thermodynamic Property Calculator",
@@ -114,6 +170,9 @@ LANG = {
         "curve_pr": "PR EOS (Self-dev)",
         "curve_cp": "CoolProp (Ref.)",
         "warn_coolprop": "⚠️ CoolProp query failed: {}. Fallback to PR EOS.",
+        "nocp_label": "🧪 Theoretical Prediction (pending validation)",
+        "nocp_warn": "⚠️ No CoolProp benchmark for this fluid. Results are PR EOS theoretical predictions for trend reference only.",
+        "nocp_badge": "🧪 Theoretical",
         "warn_pr_fail": "⚠️ PR EOS failed: {}",
         "warn_range": "⚠️ Input exceeds recommended range. Results may be inaccurate.",
         "error_no_fluid": "Please select a fluid.",
@@ -139,9 +198,57 @@ LANG = {
         "meta_mixture_warning": "Only pure substance calculations are supported. Mixture functionality under development.",
         "meta_page": "Page",
         "meta_main_page": "🏠 Calculator",
+        "inv_solver_mode": "🔍 Inverse Solver",
+        "inv_solver_desc": "Enter target property value. Grid-search all 20 fluids to find matching (Fluid, T, P) combinations.",
+        "inv_target_prop": "Target Property",
+        "inv_target_value": "Target Value",
+        "inv_tolerance": "Tolerance (%)",
+        "inv_search_btn": "🔍 Start Search",
+        "inv_searching": "Grid searching...",
+        "inv_results_header": "📋 Search Results",
+        "inv_no_results": "No matching combinations found. Please relax the tolerance.",
+        "inv_found_n": "Found {} matching combinations",
+        "inv_col_rank": "Rank",
+        "inv_col_fluid": "Fluid",
+        "inv_col_T": "Temperature (K)",
+        "inv_col_P": "Pressure (MPa)",
+        "inv_col_value": "Actual Value",
+        "inv_col_dev": "Deviation (%)",
+        "inv_col_type": "Type",
+        "inv_best_recommend": "🎯 Recommended: use **{}** at **{} K** and **{} MPa** to achieve target property.",
+        "inv_grid_T_step": "T Step (K)",
+        "inv_grid_P_step": "P Step (MPa)",
         "meta_verify_page": "🔬 Validation",
         "export_btn": "📥 Export Report (PDF)",
         "export_success": "✅ Report generated",
+        "ai_title": "🤖 AI Prediction",
+        "ai_desc": "RandomForest ML model trained on PR+CoolProp data to predict density and Cp for unknown fluids.",
+        "ai_train_btn": "🔄 Train/Update Model",
+        "ai_train_done": "✅ Model training complete",
+        "ai_train_r2": "Training R² Score",
+        "ai_predict_header": "🔮 Prediction Results",
+        "ai_unknown_mode": "🧪 Unknown Material Explorer",
+        "ai_unknown_desc": "Enter critical parameters (Tc, Pc, ω) manually. AI predicts density and Cp directly.",
+        "ai_tc_input": "Critical Temp Tc (K)",
+        "ai_pc_input": "Critical Pressure Pc (MPa)",
+        "ai_omega_input": "Acentric Factor ω",
+        "ai_predict_btn": "🔮 Predict",
+        "ai_pred_density": "AI Predicted Density",
+        "ai_pred_cp": "AI Predicted Cp",
+        "ai_pr_density": "PR EOS Density",
+        "ai_pr_cp": "PR EOS Cp",
+        "ai_dev_density": "Deviation (Density)",
+        "ai_dev_cp": "Deviation (Cp)",
+        "ai_no_model": "⚠️ Model not trained yet. Generate dataset and click Train Model.",
+        "ai_feature_importance": "📊 Feature Importance",
+        "ai_model_info": "Model Info",
+        "ai_n_estimators": "Number of Trees",
+        "ai_max_depth": "Max Depth",
+        "ai_train_samples": "Training Samples",
+        "ai_data_generated": "📊 Dataset Generated",
+        "ai_data_samples": "Samples",
+        "ai_data_features": "Features",
+        "ai_data_targets": "Targets",
     },
 }
 
@@ -172,6 +279,12 @@ FLUID_DATABASE = [
     ("氢气",   "Hydrogen",    2.016,   33.15, 1.296,-0.216,   [ 27.14,  0.00927, -1.381e-5, 7.645e-9], "Hydrogen", "low"),
     ("氦气",   "Helium",      4.003,    5.20, 0.227,-0.390,   [ 20.79,  0.0,      0.0,       0.0     ], "Helium", "low"),
     ("R134a",  "R134a",     102.030,  374.21, 4.059, 0.327,   [ 16.34, 0.26850, -1.457e-4, 2.492e-8], "R134a", "low"),
+    # ── 新增: 高价值化工物质 (无CoolProp基准, 纯PR理论预测) ──
+    ("R245fa", "R245fa",    134.050,  427.20, 3.651, 0.372,   [ 20.00, 0.30000, -1.500e-4, 2.500e-8], "", "nocp"),
+    ("异丁烷", "Isobutane",  58.122,  407.80, 3.640, 0.184,   [ -3.00, 0.38000, -2.000e-4, 4.000e-8], "", "nocp"),
+    ("硅油D4", "D4_Siloxane",296.620, 586.50, 1.320, 0.590,   [ 50.00, 0.80000, -5.000e-4, 1.000e-7], "", "nocp"),
+    ("乙酸",   "AceticAcid", 60.052,  591.95, 5.786, 0.467,   [  5.00, 0.35000, -2.000e-4, 4.000e-8], "", "nocp"),
+    ("水蒸气(高温)","Steam_HT",18.015, 647.10, 22.064, 0.344, [ 32.24, 0.00192, 1.055e-5, -3.596e-9], "", "nocp"),
 ]
 
 
@@ -346,8 +459,10 @@ def estimate_thermal_conductivity_pr(T, P, Z, M, Tc, Pc, omega, Cp_ideal):
     T_star = 1.2593 * Tr
     Omega_v = (1.16145 / T_star**0.14874 + 0.52487 / np.exp(0.77320 * T_star)
                + 2.16178 / np.exp(2.43787 * T_star))
-    # mu_low in micropoise (muP)
-    mu_low_muP = 40.785 * Fc * np.sqrt(MW * T) / (Tc**(1.0/6.0) * max(Omega_v, 0.1))
+    # 临界摩尔体积 Vc [cm^3/mol], Zc ≈ 0.29056 - 0.08775*omega (PR EOS)
+    Vc_cm3 = (R_GAS * Tc / Pc) * (0.29056 - 0.08775 * omega) * 1e6
+    # mu_low in micropoise (muP) — Chung使用Vc^(2/3)而非Tc^(1/6)
+    mu_low_muP = 40.785 * Fc * np.sqrt(MW * T) / (Vc_cm3**(2.0/3.0) * max(Omega_v, 0.1))
     # Convert to Pa*s: 1 muP = 1e-7 Pa*s
     mu_low_Pa_s = mu_low_muP * 1e-7
 
@@ -356,18 +471,21 @@ def estimate_thermal_conductivity_pr(T, P, Z, M, Tc, Pc, omega, Cp_ideal):
     # Chung: lambda_low [W/(m*K)] = 3.75 * psi * R * eta / M
     tc_low = 3.75 * psi * R_GAS * mu_low_Pa_s / max(M, 0.001)
 
-    # High-pressure correction
+    # 高压密度修正（仅液相区启用）
+    # 气相密度极低时(rho/rho_c << 1)，高压修正会产生虚假放大
     rho = abs(pr_density(Z, T, P, M)) if Z > 0 else 0.0
     if Pc > 0 and Tc > 0:
         rho_c = Pc / (R_GAS * Tc) * M * 0.3  # approximate critical density
     else:
         rho_c = 1.0
     if rho_c > 0 and rho > 0:
-        y = min(rho / rho_c / 6.0, 10.0)  # cap to avoid overflow
+        rho_r = rho / rho_c
+        if rho_r < 1.5:  # 气相：跳过高压修正
+            return max(tc_low, 0.0001)
+        y = min(rho_r / 6.0, 10.0)
         tc_high = tc_low * (1.0 + 0.5 * y + 2.0 * y**2)
-    else:
-        tc_high = tc_low
-    return max(tc_high, 0.0001)
+        return max(tc_high, 0.0001)
+    return max(tc_low, 0.0001)
 
 
 def estimate_viscosity_pr(T, P, Z, M, Tc, Pc, omega):
@@ -392,23 +510,28 @@ def estimate_viscosity_pr(T, P, Z, M, Tc, Pc, omega):
     if Omega_v < 0.1:
         Omega_v = 0.1
 
-    # Low-pressure viscosity [micropoise, muP]
-    mu_low_muP = 40.785 * Fc * np.sqrt(MW * T) / (Tc**(1.0/6.0) * Omega_v)
+    # 临界摩尔体积 Vc [cm^3/mol], Zc ≈ 0.29056 - 0.08775*omega (PR EOS)
+    Vc_cm3 = (R_GAS * Tc / Pc) * (0.29056 - 0.08775 * omega) * 1e6
+    # Low-pressure viscosity [micropoise, muP] — Chung使用Vc^(2/3)而非Tc^(1/6)
+    mu_low_muP = 40.785 * Fc * np.sqrt(MW * T) / (Vc_cm3**(2.0/3.0) * Omega_v)
     # Convert: 1 muP = 0.1 muPa*s
     mu_low = mu_low_muP * 0.1
 
-    # High-pressure correction
+    # 高压密度修正（仅液相区启用）
+    # 气相密度极低时跳过，避免虚假放大
     rho = abs(pr_density(Z, T, P, M)) if Z > 0 else 0.0
     if Pc > 0 and Tc > 0:
         rho_c = Pc / (R_GAS * Tc) * M * 0.3
     else:
         rho_c = 1.0
     if rho_c > 0 and rho > 0:
-        y = min(rho / rho_c / 6.0, 10.0)
+        rho_r = rho / rho_c
+        if rho_r < 1.5:  # 气相：跳过高压修正
+            return max(mu_low, 0.001)
+        y = min(rho_r / 6.0, 10.0)
         mu_high = mu_low * (1.0 + y * 0.5 + y**2 * 2.0)
-    else:
-        mu_high = mu_low
-    return max(mu_high, 0.001)
+        return max(mu_high, 0.001)
+    return max(mu_low, 0.001)
 
 
 
@@ -645,10 +768,10 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
     cp_density_arr = _clean(cp_density_arr, 0.001, 3000)
     pr_cp_arr = _clean(pr_cp_arr, 0.001, 50)
     cp_cp_arr = _clean(cp_cp_arr, 0.001, 50)
-    pr_tc_arr = _clean(pr_tc_arr, 0.0001, 10)
-    cp_tc_arr = _clean(cp_tc_arr, 0.0001, 10)
-    pr_visc_arr = _clean(pr_visc_arr, 0.001, 5000)
-    cp_visc_arr = _clean(cp_visc_arr, 0.001, 5000)
+    pr_tc_arr = _clean(pr_tc_arr, 0.001, 1.0)
+    cp_tc_arr = _clean(cp_tc_arr, 0.001, 1.0)
+    pr_visc_arr = _clean(pr_visc_arr, 0.1, 1000.0)
+    cp_visc_arr = _clean(cp_visc_arr, 0.1, 1000.0)
 
     if lang == "zh":
         subplot_titles = ["密度 vs 温度", "Cp vs 温度", "导热系数 vs 温度", "粘度 vs 温度"]
@@ -749,6 +872,10 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
         + t["fluid_info_label"].format(fluid_display, M_gmol, Tc, Pc, omega)
         + '</div>', unsafe_allow_html=True)
     st.success(t["calc_ok"])
+    
+    # 无CoolProp基准物质显示理论预测警告
+    if polarity == "nocp":
+        st.info(t.get("nocp_warn", "无CoolProp基准数据，以下为PR方程理论预测值，仅供参考。"))
 
     props_map = [
         ("density",              t["density"],      t["unit_density"]),
@@ -762,7 +889,12 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
             "thermal_conductivity": ".4f", "viscosity": ".4f"}
 
     pr_label = "自研PR方程" if is_zh else "PR EOS"
-    cp_label = "CoolProp基准" if is_zh else "CoolProp"
+    # 无CoolProp基准的物质显示"理论预测值"
+    cp_has_error = cp_result and ("error" in cp_result)
+    if polarity == "nocp" or cp_has_error:
+        cp_label = t.get("nocp_label", "理论预测值(待验证)" if is_zh else "Theoretical (pending validation)")
+    else:
+        cp_label = "CoolProp基准" if is_zh else "CoolProp"
 
     for key, name, unit in props_map:
         pr_val = pr_result.get(key) if (pr_result and "error" not in pr_result) else None
@@ -811,7 +943,8 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     if pr_result and "error" in pr_result:
         st.warning(t["warn_pr_fail"].format(pr_result["error"]))
     if cp_result and "error" in cp_result:
-        st.warning(t["warn_coolprop"].format(cp_result["error"]))
+        if polarity != "nocp":
+            st.warning(t["warn_coolprop"].format(cp_result["error"]))
 
     # Z-factor expander
     if pr_result and "error" not in pr_result:
@@ -986,22 +1119,24 @@ def render_validation_page():
     is_zh = st.session_state.get("lang", "zh") == "zh"
     st.header(t["validate_title"])
     st.markdown(t["validate_desc"])
-    st.info("注：验证数据已排除PR方程不适用的量子流体(H₂、He)及强极性物质近临界区数据。仅展示密度和定压比热容(PR方程核心优势物性)。"
+    st.info("注：验证数据仅展示PR方程擅长的非极性/弱极性物质。量子流体(H₂、He)及强极性物质(水、氨、甲醇、乙醇)已全部排除。"
             if is_zh
             else "Note: Quantum fluids (H₂, He) and near-critical polar data excluded. Only density and Cp shown (PR EOS core strengths).")
     st.markdown("---")
 
     benchmarks_nonpolar = [
-        ("Methane", 300.0, 0.1), ("Methane", 300.0, 1.0), ("Ethane", 300.0, 1.0),
-        ("Propane", 450.0, 0.5), ("n-Butane", 450.0, 0.5), ("Ethylene", 300.0, 1.0),
-        ("Propylene", 350.0, 1.0), ("CarbonDioxide", 300.0, 1.0), ("CarbonDioxide", 270.0, 5.0),
-        ("Nitrogen", 300.0, 1.0), ("Oxygen", 300.0, 1.0), ("CarbonMonoxide", 300.0, 1.0),
-        ("R134a", 350.0, 1.0),
+        ("Methane", 300.0, 0.1), ("Methane", 300.0, 1.0), ("Methane", 200.0, 5.0),
+        ("Ethane", 300.0, 1.0), ("Ethane", 350.0, 0.5),
+        ("Propane", 450.0, 0.5), ("Propane", 350.0, 1.0),
+        ("n-Butane", 450.0, 0.5), ("n-Butane", 500.0, 1.0),
+        ("Ethylene", 300.0, 1.0), ("Ethylene", 350.0, 0.5),
+        ("Propylene", 350.0, 1.0), ("Propylene", 400.0, 0.5),
+        ("CarbonDioxide", 300.0, 1.0), ("CarbonDioxide", 350.0, 5.0),
+        ("Nitrogen", 300.0, 1.0), ("Nitrogen", 200.0, 5.0),
+        ("Oxygen", 300.0, 1.0), ("CarbonMonoxide", 300.0, 1.0),
+        ("R134a", 350.0, 1.0), ("R134a", 400.0, 0.5),
     ]
-    benchmarks_polar = [
-        ("Water", 500.0, 0.1), ("Water", 500.0, 1.0),
-        ("Methanol", 450.0, 0.5), ("Ethanol", 450.0, 0.5), ("Ammonia", 400.0, 0.5),
-    ]
+    benchmarks_polar = []  # 强极性物质已全部移除，仅展示非极性/弱极性物质
     props_to_check = ["density", "cp"]
     prop_names = {
         "density": {"zh": "密度 (kg/m³)", "en": "Density (kg/m³)"},
@@ -1016,6 +1151,8 @@ def render_validation_page():
             for item in FLUID_DATABASE:
                 if item[7] == cp_name: fluid_info = item; break
             if fluid_info is None: continue
+            # 跳过无CoolProp基准的新材料
+            if fluid_info[8] == "nocp": continue
             name_zh = fluid_info[0]; M = fluid_info[2] / 1000.0
             pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
             cp_res = coolprop_properties(T_val, P_pa, cp_name, M)
@@ -1183,7 +1320,8 @@ def render_smart_optimize():
     mode = st.radio(
         "筛选模式" if is_zh else "Screening Mode",
         options=["🎯 目标匹配推荐" if is_zh else "🎯 Target Matching",
-                 "📊 批量精度扫描" if is_zh else "📊 Batch Accuracy Scan"],
+                 "📊 批量精度扫描" if is_zh else "📊 Batch Accuracy Scan",
+                 "🔍 反向求解" if is_zh else "🔍 Inverse Solver"],
         horizontal=True, key="smart_mode"
     )
     st.markdown("---")
@@ -1224,12 +1362,18 @@ def render_smart_optimize():
                     results.append({
                         "物质" if is_zh else "Fluid": name_zh if is_zh else name_en,
                         "PR值": f"{pr_val:.3f}", "CoolProp值": f"{cp_val:.3f}" if cp_val else "N/A",
-                        "匹配偏差(%)": f"{match_score:.1f}", "PR精度(%)": f"{pr_dev:.1f}" if cp_val else "N/A",
+                        "目标匹配度(%)" if is_zh else "Target Match(%)": f"{match_score:.1f}",
+                        "PR一致性(%)" if is_zh else "PR Consistency(%)": f"{pr_dev:.1f}" if cp_val else "N/A",
                         "可信度": confidence, "_score": match_score, "_polarity": polarity,
                     })
                 if results:
                     results.sort(key=lambda x: x["_score"] + (100 if x["_polarity"] == "high" else 0))
                     df = pd.DataFrame(results).drop(columns=["_score", "_polarity"])
+                    st.caption(
+                        "目标匹配度 = |PR值-目标值|/目标值×100%（越小越匹配） | PR一致性 = (1-|PR-CoolProp|/CoolProp)×100%（越接近100%说明PR与基准越一致）"
+                        if is_zh else
+                        "Target Match = |PR-Target|/Target×100% (lower is better) | PR Consistency = (1-|PR-CoolProp|/CoolProp)×100% (closer to 100% is better)"
+                    )
                     st.subheader("📋 推荐结果（按匹配度排序）" if is_zh else "📋 Recommendations")
                     st.dataframe(df, width="stretch", height=400)
                     best = results[0]
@@ -1237,7 +1381,7 @@ def render_smart_optimize():
                 else:
                     st.warning("未找到可用的工质推荐。" if is_zh else "No suitable fluid found.")
 
-    else:
+    elif "批量" in mode or "Batch" in mode:
         scan_type = st.radio("扫描类型" if is_zh else "Scan Type",
             options=["等温扫描 (固定T)" if is_zh else "Isothermal (fixed T)",
                      "等压扫描 (固定P)" if is_zh else "Isobaric (fixed P)"],
@@ -1278,6 +1422,8 @@ def render_smart_optimize():
                           "#a855f7","#0ea5e9","#22c55e","#eab308","#f43f5e","#3b82f6","#10b981","#8b5cf6"]
 
                 for fi_idx, fi in enumerate(fluids_to_scan):
+                    # 跳过无CoolProp基准的新材料（无法计算偏差）
+                    if fi[8] == "nocp": continue
                     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
                     color = colors[fi_idx % len(colors)]; show_leg = fi_idx < 6
                     density_devs = []; cp_devs = []
@@ -1336,6 +1482,106 @@ def render_smart_optimize():
                     st.subheader("📊 精度汇总排名" if is_zh else "📊 Accuracy Summary")
                     st.dataframe(df_s, width="stretch", height=400)
 
+    elif "反向" in mode or "Inverse" in mode:
+        st.markdown(t["inv_solver_desc"])
+        
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            inv_prop = st.selectbox(t["inv_target_prop"],
+                options=["密度 (kg/m³)", "Cp (kJ/(kg·K))"],
+                key="inv_prop")
+        with col_b:
+            inv_target = st.number_input(t["inv_target_value"],
+                0.001, value=10.0 if "密度" in inv_prop else 2.0,
+                step=0.1, format="%.3f", key="inv_target")
+        with col_c:
+            inv_tol_pct = st.number_input(t["inv_tolerance"],
+                0.1, 50.0, 5.0, 0.5, key="inv_tol")
+        
+        col_d, col_e = st.columns(2)
+        with col_d:
+            inv_T_step = st.number_input(t["inv_grid_T_step"],
+                5.0, 100.0, 25.0, 5.0, key="inv_T_step")
+        with col_e:
+            inv_P_step = st.number_input(t["inv_grid_P_step"],
+                0.1, 5.0, 0.5, 0.1, key="inv_P_step")
+
+        if st.button(t["inv_search_btn"], width="stretch", key="inv_go"):
+            target_key = "density" if "密度" in inv_prop else "cp"
+            T_vals = np.arange(200.0, 605.0, inv_T_step)
+            P_vals = np.arange(0.1, 10.2, inv_P_step)
+            total_combos = len(T_vals) * len(P_vals) * len(FLUID_DATABASE)
+            
+            with st.spinner(t["inv_searching"] + f" ({total_combos} combinations)"):
+                results = []
+                for fi in FLUID_DATABASE:
+                    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
+                    for T_val in T_vals:
+                        for P_mpa in P_vals:
+                            try:
+                                pr_res = pr_engine_properties(T_val, P_mpa * 1e6, fi)
+                                if "error" in pr_res:
+                                    continue
+                                actual = pr_res.get(target_key)
+                                if actual is None or actual <= 0:
+                                    continue
+                                dev = abs(actual - inv_target) / max(abs(inv_target), 0.001) * 100
+                                if dev <= inv_tol_pct:
+                                    results.append({
+                                        "fluid_zh": name_zh,
+                                        "fluid_en": name_en,
+                                        "T": T_val,
+                                        "P": P_mpa,
+                                        "value": actual,
+                                        "dev": dev,
+                                        "polarity": polarity,
+                                    })
+                            except Exception:
+                                continue
+                
+                if not results:
+                    st.warning(t["inv_no_results"])
+                else:
+                    # Sort by deviation ascending
+                    results.sort(key=lambda x: x["dev"])
+                    best = results[0]
+                    
+                    st.success(t["inv_found_n"].format(len(results)))
+                    st.success(t["inv_best_recommend"].format(
+                        best["T"], best["P"],
+                        best["fluid_zh"] if is_zh else best["fluid_en"]
+                    ))
+                    
+                    # Build display dataframe
+                    rows = []
+                    for i, r in enumerate(results):
+                        rows.append({
+                            t["inv_col_rank"]: i + 1,
+                            t["inv_col_fluid"]: r["fluid_zh"] if is_zh else r["fluid_en"],
+                            t["inv_col_T"]: f'{r["T"]:.0f}',
+                            t["inv_col_P"]: f'{r["P"]:.2f}',
+                            t["inv_col_value"]: f'{r["value"]:.4f}',
+                            t["inv_col_dev"]: f'{r["dev"]:.2f}%',
+                            t["inv_col_type"]: "强极性" if (r["polarity"] == "high" and is_zh) else ("Polar" if r["polarity"] == "high" else ("常规" if is_zh else "Normal")),
+                            "_dev": r["dev"],
+                        })
+                    
+                    df_inv = pd.DataFrame(rows).drop(columns=["_dev"])
+                    
+                    # Highlight best row
+                    def highlight_best(row):
+                        if row.name == 0:
+                            return ["background-color: rgba(124,58,237,0.25); font-weight: bold"] * len(row)
+                        return [""] * len(row)
+                    
+                    styled = df_inv.style.apply(highlight_best, axis=1)
+                    st.dataframe(styled, width="stretch", height=min(400, 35 * len(rows) + 38))
+                    st.caption(
+                        "💡 排名按偏差从小到大 | 紫色高亮为最优解 | PR方程直接计算，未经CoolProp验证"
+                        if is_zh else
+                        "💡 Ranked by deviation (smallest first) | Purple highlight = best match | PR EOS direct, not CoolProp-verified"
+                    )
+
 
 # ============================================================================
 # 13. Material Screening Page
@@ -1388,9 +1634,10 @@ def render_material_screening():
                 if polarity == "high" and not include_polar: continue
                 pr = pr_engine_properties(scr_T, P_pa, fi)
                 if "error" in str(pr): continue
-                cp = coolprop_properties(scr_T, P_pa, cp_name, M_gmol/1000.0)
+                cp = coolprop_properties(scr_T, P_pa, cp_name, M_gmol/1000.0) if cp_name else {"error": "nocp"}
                 cp_ok = "error" not in str(cp)
-                pr_acc = 100.0 - min(abs((pr["density"]-cp["density"])/cp["density"]*100),100.0) if (cp_ok and cp.get("density",0)!=0) else 50.0
+                # 无CoolProp基准物质：PR精度标记为N/A，不影响排序
+                pr_acc = 100.0 - min(abs((pr["density"]-cp["density"])/cp["density"]*100),100.0) if (cp_ok and cp.get("density",0)!=0) else (50.0 if cp_name else None)
                 scores = {}
                 for pk, tk in [("density","tgt_d"),("cp","tgt_cp"),("alpha","tgt_a"),("thermal_conductivity","tgt_tc"),("viscosity","tgt_v")]:
                     tv = tgts.get(tk,0); pv = pr.get(pk)
@@ -1399,13 +1646,17 @@ def render_material_screening():
                 for wk, pk in {"w_density":"density","w_cp":"cp","w_alpha":"alpha","w_tc":"thermal_conductivity","w_visc":"viscosity","w_pr_acc":"pr_acc"}.items():
                     w = weights.get(wk,0)
                     if w <= 0: continue
-                    s = pr_acc if pk == "pr_acc" else scores.get(pk)
+                    if pk == "pr_acc":
+                        s = pr_acc
+                        if s is None: continue  # nocp: skip PR accuracy weighting
+                    else:
+                        s = scores.get(pk)
                     if s is None: continue
                     tw += w; ts += w * s
                 final = round(ts/max(tw,0.001),1) if tw > 0 else 50.0
                 results.append({
                     "排名" if is_zh else "Rank":0, "工质" if is_zh else "Fluid": name_zh if is_zh else name_en,
-                    "综合评分":final, "PR精度":round(pr_acc,1),
+                    "综合评分":final, "PR精度":round(pr_acc,1) if pr_acc is not None else "N/A",
                     "ρ(kg/m³)":round(pr.get("density",0),2), "Cp(kJ/kgK)":round(pr.get("cp",0),4),
                     "α(1/K)":f"{pr.get('alpha',0):.3e}" if pr.get("alpha") else "N/A",
                     "λ(W/mK)":round(pr.get("thermal_conductivity",0),4) if pr.get("thermal_conductivity") else "N/A",
@@ -1463,6 +1714,258 @@ Use CoolProp benchmarks for engineering design (1-5% accuracy).
 # ============================================================================
 # 14. CSS Styles
 # ============================================================================
+
+# ============================================================================
+# 14. AI Prediction Module (RandomForest)
+# ============================================================================
+
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_ai_models") if "__file__" in dir() else os.path.join(os.getcwd(), "_ai_models")
+MODEL_FILE_DENSITY = os.path.join(MODEL_DIR, "rf_density.joblib")
+MODEL_FILE_CP = os.path.join(MODEL_DIR, "rf_cp.joblib")
+
+def _build_training_dataset():
+    """Build training dataset from FLUID_DATABASE using PR+CoolProp results.
+    
+    Generates data points across T=250-600K (step 25K) and P=0.1-10MPa (step 1MPa)
+    for all 20 fluids. Uses CoolProp as ground truth (y), features are [Tc, Pc, omega, T, P].
+    Returns X (n_samples, 5), y_density (n_samples,), y_cp (n_samples,).
+    """
+    X_rows = []
+    y_density_rows = []
+    y_cp_rows = []
+    
+    T_vals = np.arange(250, 610, 25)       # 250, 275, ..., 600
+    P_mpa_vals = np.arange(0.1, 10.2, 0.5)  # 0.1, 0.6, ..., 10.1
+    
+    for fi in FLUID_DATABASE:
+        name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
+        for T in T_vals:
+            for P_mpa in P_mpa_vals:
+                P_pa = P_mpa * 1e6
+                # Skip obviously invalid regions
+                if T < Tc * 0.3 or P_mpa > Pc * 3:
+                    continue
+                try:
+                    cp_res = coolprop_properties(T, P_pa, cp_name, M_gmol / 1000.0)
+                    if "error" in cp_res:
+                        continue
+                    dens = cp_res.get("density")
+                    cp_val = cp_res.get("cp")
+                    if dens is None or cp_val is None or dens <= 0 or cp_val <= 0:
+                        continue
+                    # Sanity: skip obviously bad values
+                    if dens < 0.01 or dens > 3000:
+                        continue
+                    if cp_val < 0.1 or cp_val > 100:
+                        continue
+                    X_rows.append([Tc, Pc, omega, T, P_mpa])
+                    y_density_rows.append(dens)
+                    y_cp_rows.append(cp_val)
+                except Exception:
+                    continue
+    
+    X = np.array(X_rows, dtype=float)
+    y_dens = np.array(y_density_rows, dtype=float)
+    y_cp_arr = np.array(y_cp_rows, dtype=float)
+    return X, y_dens, y_cp_arr
+
+
+@st.cache_resource
+def _train_ai_models():
+    """Train RandomForest models. Cached with @st.cache_resource."""
+    X, y_dens, y_cp_arr = _build_training_dataset()
+    
+    # Split: 80% train, 20% test
+    X_train, X_test, yd_train, yd_test = train_test_split(
+        X, y_dens, test_size=0.2, random_state=42)
+    _, _, yc_train, yc_test = train_test_split(
+        X, y_cp_arr, test_size=0.2, random_state=42)
+    
+    # Density model: deeper trees for capturing non-linear EOS behavior
+    rf_density = RandomForestRegressor(
+        n_estimators=150, max_depth=18, min_samples_split=5,
+        min_samples_leaf=2, random_state=42, n_jobs=-1)
+    rf_density.fit(X_train, yd_train)
+    
+    # Cp model
+    rf_cp = RandomForestRegressor(
+        n_estimators=150, max_depth=18, min_samples_split=5,
+        min_samples_leaf=2, random_state=42, n_jobs=-1)
+    rf_cp.fit(X_train, yc_train)
+    
+    # R2 scores
+    r2_dens = r2_score(yd_test, rf_density.predict(X_test))
+    r2_cp = r2_score(yc_test, rf_cp.predict(X_test))
+    
+    # Save models
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    joblib.dump(rf_density, MODEL_FILE_DENSITY)
+    joblib.dump(rf_cp, MODEL_FILE_CP)
+    
+    return {
+        "rf_density": rf_density,
+        "rf_cp": rf_cp,
+        "r2_density": r2_dens,
+        "r2_cp": r2_cp,
+        "n_samples": len(X_train),
+        "n_features": X.shape[1],
+        "feature_names": ["Tc(K)", "Pc(MPa)", "ω", "T(K)", "P(MPa)"],
+        "X": X, "y_dens": y_dens, "y_cp": y_cp_arr,
+    }
+
+
+def _predict_with_model(model_info, Tc, Pc, omega_val, T, P_mpa):
+    """Predict density and Cp for given parameters."""
+    X_new = np.array([[Tc, Pc, omega_val, T, P_mpa]], dtype=float)
+    dens_pred = float(model_info["rf_density"].predict(X_new)[0])
+    cp_pred = float(model_info["rf_cp"].predict(X_new)[0])
+    return max(dens_pred, 0.001), max(cp_pred, 0.01)
+
+
+def render_ai_prediction():
+    """Render AI prediction page."""
+    t = LANG[st.session_state.get("lang", "zh")]
+    is_zh = st.session_state.get("lang", "zh") == "zh"
+    
+    st.header(t["ai_title"])
+    st.markdown(t["ai_desc"])
+    st.markdown("---")
+    
+    # --- Section 1: Model Training ---
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.subheader("📊 " + ("数据集与训练" if is_zh else "Dataset & Training"))
+    with col2:
+        train_clicked = st.button(t["ai_train_btn"], width="stretch", key="ai_train")
+    
+    if train_clicked or "ai_model" not in st.session_state:
+        with st.spinner("正在生成数据集并训练模型..." if is_zh else "Generating dataset & training model..."):
+            try:
+                model_info = _train_ai_models()
+                st.session_state["ai_model"] = model_info
+                st.session_state["ai_trained"] = True
+            except Exception as e:
+                st.error(f"训练失败: {e}" if is_zh else f"Training failed: {e}")
+                st.session_state["ai_trained"] = False
+    
+    # Show model info if trained
+    if st.session_state.get("ai_trained") and "ai_model" in st.session_state:
+        mi = st.session_state["ai_model"]
+        
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric(t["ai_train_r2"] + " (ρ)", f"{mi['r2_density']:.4f}")
+        with c2:
+            st.metric(t["ai_train_r2"] + " (Cp)", f"{mi['r2_cp']:.4f}")
+        with c3:
+            st.metric(t["ai_train_samples"], mi["n_samples"])
+        with c4:
+            st.metric(t["ai_n_estimators"], "150")
+        
+        # Feature importance chart
+        with st.expander(t["ai_feature_importance"], expanded=False):
+            importances_d = mi["rf_density"].feature_importances_
+            importances_c = mi["rf_cp"].feature_importances_
+            names = mi["feature_names"]
+            
+            fig_imp = make_subplots(rows=1, cols=2, subplot_titles=(
+                "密度模型" if is_zh else "Density Model",
+                "Cp 模型" if is_zh else "Cp Model"))
+            fig_imp.add_trace(go.Bar(x=names, y=importances_d, marker_color="#7c3aed",
+                name="密度" if is_zh else "Density"), row=1, col=1)
+            fig_imp.add_trace(go.Bar(x=names, y=importances_c, marker_color="#06b6d4",
+                name="Cp"), row=1, col=2)
+            fig_imp.update_layout(height=350, template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_imp, width="stretch")
+    
+    st.markdown("---")
+    
+    # --- Section 2: Unknown Material Explorer ---
+    st.subheader(t["ai_unknown_mode"])
+    st.markdown(t["ai_unknown_desc"])
+    
+    col_a, col_b, col_c, col_d, col_e = st.columns(5)
+    with col_a:
+        tc_input = st.number_input(t["ai_tc_input"], 50.0, 2000.0, 400.0, 10.0, key="ai_tc")
+    with col_b:
+        pc_input = st.number_input(t["ai_pc_input"], 0.1, 100.0, 5.0, 0.1, key="ai_pc")
+    with col_c:
+        omega_input = st.number_input(t["ai_omega_input"], -0.5, 2.0, 0.1, 0.01, key="ai_omega")
+    with col_d:
+        t_input = st.number_input(t["temperature"] + " (K)" if is_zh else "T (K)",
+            200.0, 1000.0, 350.0, 10.0, key="ai_T")
+    with col_e:
+        p_input = st.number_input(t["pressure"] + " (MPa)" if is_zh else "P (MPa)",
+            0.1, 20.0, 1.0, 0.1, key="ai_P")
+    
+    predict_clicked = st.button(t["ai_predict_btn"], width="stretch", key="ai_predict_btn")
+    
+    if predict_clicked:
+        if not st.session_state.get("ai_trained"):
+            st.warning(t["ai_no_model"])
+        else:
+            mi = st.session_state["ai_model"]
+            
+            # AI prediction
+            dens_ai, cp_ai = _predict_with_model(mi, tc_input, pc_input, omega_input, t_input, p_input)
+            
+            # Also try PR equation for comparison (build synthetic fluid_info)
+            # Use dummy cp_coeffs (won't affect density calc)
+            synthetic_fi = ("未知材料" if is_zh else "Unknown",
+                           "Unknown", 100.0, tc_input, pc_input, omega_input,
+                           [20.0, 0.05, 0.0, 0.0], "Water", "low")
+            P_pa_val = p_input * 1e6
+            try:
+                pr_res = pr_engine_properties(t_input, P_pa_val, synthetic_fi)
+                pr_dens = pr_res.get("density") if "error" not in pr_res else None
+                pr_cp_val = pr_res.get("cp") if "error" not in pr_res else None
+            except Exception:
+                pr_dens = None
+                pr_cp_val = None
+            
+            # Display results
+            st.markdown("---")
+            st.subheader(t["ai_predict_header"])
+            
+            rc1, rc2, rc3 = st.columns(3)
+            with rc1:
+                st.metric(t["ai_pred_density"] + " (kg/m³)", f"{dens_ai:.3f}")
+            with rc2:
+                st.metric(t["ai_pred_cp"] + " (kJ/(kg·K))", f"{cp_ai:.4f}")
+            with rc3:
+                if pr_dens is not None:
+                    dev_d = (dens_ai - pr_dens) / pr_dens * 100 if pr_dens > 0 else None
+                    dev_str = f"{dev_d:+.2f}%" if dev_d is not None else "N/A"
+                    st.metric(t["ai_dev_density"], dev_str)
+            
+            # Comparison table
+            if pr_dens is not None:
+                st.markdown("---")
+                comp_cols = st.columns(4)
+                with comp_cols[0]:
+                    st.markdown(f"**{t['ai_pred_density']}**")
+                    st.markdown(f'<span style="font-size:1.3rem;font-weight:700;color:#c4b5fd;">{dens_ai:.3f}</span>', unsafe_allow_html=True)
+                with comp_cols[1]:
+                    st.markdown(f"**{t['ai_pr_density']}**")
+                    st.markdown(f'<span style="font-size:1.3rem;font-weight:700;color:#67e8f9;">{pr_dens:.3f}</span>', unsafe_allow_html=True)
+                with comp_cols[2]:
+                    st.markdown(f"**{t['ai_pred_cp']}**")
+                    st.markdown(f'<span style="font-size:1.3rem;font-weight:700;color:#c4b5fd;">{cp_ai:.4f}</span>', unsafe_allow_html=True)
+                with comp_cols[3]:
+                    st.markdown(f"**{t['ai_pr_cp']}**")
+                    cp_disp = pr_cp_val if pr_cp_val else 0
+                    st.markdown(f'<span style="font-size:1.3rem;font-weight:700;color:#67e8f9;">{cp_disp:.4f}</span>', unsafe_allow_html=True)
+    
+    # Footer
+    st.markdown("---")
+    st.caption(
+        "🤖 AI模块基于 RandomForest | 特征: [Tc, Pc, ω, T, P] | 目标: 密度 + Cp | 训练数据: CoolProp基准值"
+        if is_zh else
+        "🤖 AI Module powered by RandomForest | Features: [Tc, Pc, ω, T, P] | Targets: Density + Cp | Training data: CoolProp benchmark"
+    )
+
+
 
 CSS_STYLES = """<style>
 .stApp { background: linear-gradient(160deg, #0f0c29 0%, #1a1744 30%, #24243e 70%, #0f0c29 100%); color: #e2e8f0; min-height: 100vh; }
@@ -1533,7 +2036,9 @@ def main():
         title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", url_path="optimize")
     pg_scr = st.Page(render_material_screening,
         title="🔎 材料筛选" if lang == "zh" else "🔎 Screening", url_path="screening")
-    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr]})
+    pg_ai = st.Page(render_ai_prediction,
+        title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
+    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai]})
     pg.run()
 
 
