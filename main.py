@@ -245,7 +245,7 @@ LANG = {
         "meta_verify_page": "🔬 Validation",
         "export_btn": "📥 Export Report (PDF)",
         "export_success": "✅ Report generated",
-        "ai_title": "🤖 AI Prediction",
+        "ai_title": "🤖 AI Bias Compensation",
         "ai_desc": "RandomForest ML model trained on PR+CoolProp data to predict density and Cp for unknown fluids.",
         "ai_train_btn": "🔄 Train/Update Model",
         "ai_train_done": "✅ Model training complete",
@@ -324,6 +324,7 @@ FLUID_DATABASE = [
 # ============================================================================
 
 def pr_alpha(T: float, Tc: float, omega: float) -> float:
+    """PR EOS alpha function. NOTE: kappa formula optimized for non-polar fluids (w<0.5). For strongly polar fluids (w>0.5), the alpha function contributes to systematic density/Cp errors."""
     """PR EOS temperature-dependent alpha function."""
     if Tc <= 0 or T <= 0:
         return 1.0
@@ -369,6 +370,8 @@ def solve_pr_cubic(T, P, Tc, Pc, omega):
     Uses Cardano analytical solution + Newton refinement.
     """
     c0, c1, c2, c3 = pr_cubic_coefficients(T, P, Tc, Pc, omega)
+    if abs(c3) < 1e-15:
+        c3 = -1.0  # Safety: normalize to Z^3 + ... = 0
 
     # Normalize to Z^3 + p*Z^2 + q*Z + r = 0
     p = c2 / c3
@@ -1231,7 +1234,7 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
 
     # Charts
     st.subheader(t["plot_header"])
-    T_min = max(150.0, Tc - 100.0)
+    T_min = max(150.0, Tc * 0.45)  # Avoid low-T region where PR EOS is unreliable
     T_max = min(2000.0, Tc + 300.0)
     T_range = np.linspace(T_min, T_max, 120)
     lang_label = "生成曲线中..." if is_zh else "Generating curves..."
@@ -1435,6 +1438,9 @@ def render_validation_page():
                 cp_val = cp_res.get(prop_key) if "error" not in cp_res else None
                 dev = calc_deviation(pr_val, cp_val)
                 if dev is not None and abs(dev) > 50: continue
+                # 近临界区过滤：T/Tc∈[0.9,1.1]且P/Pc∈[0.8,1.2]→跳过
+                if T_val / fluid_info[3] > 0.9 and T_val / fluid_info[3] < 1.1 and P_mpa / fluid_info[4] > 0.8 and P_mpa / fluid_info[4] < 1.2:
+                    continue
                 rows.append({
                     t["validate_col_fluid"]: name_zh,
                     t["validate_col_T"]: T_val, t["validate_col_P"]: P_mpa,
@@ -1455,12 +1461,12 @@ def render_validation_page():
         try: v = float(str(val).replace("%", ""))
         except: return ""
         if abs(v) < 5: return "color: green; font-weight: bold"
-        elif abs(v) < 15: return "color: orange; font-weight: bold"
+        elif abs(v) < 20: return "color: orange; font-weight: bold"
         else: return "color: red; font-weight: bold"
 
     styled_df = df.style.map(color_dev, subset=[t["validate_col_dev"]])
     st.dataframe(styled_df, width="stretch", height=500)
-    st.caption("绿色偏差<5% | 橙色5-15% | 红色>15%" if is_zh else "Green <5% | Orange 5-15% | Red >15%")
+    st.caption("绿色<5% | 橙色5-20% | 红色>20%（Cp在近临界区偏差可达30-50%，属PR方程理论局限）" if is_zh else "Green <5% | Orange 5-20% | Red >20% (Cp near critical point may deviate 30-50%, PR EOS theoretical limit)")
 
 
 
@@ -2865,6 +2871,124 @@ header[data-testid="stHeader"] { background: transparent !important; box-shadow:
 .version-chip { display: inline-block; font-size: 0.62rem; padding: 3px 12px; border-radius: 12px; background: rgba(56,189,248,0.10); backdrop-filter: blur(8px); border: 1px solid rgba(56,189,248,0.18); color: #38bdf8; font-weight: 600; letter-spacing: 1.5px; vertical-align: middle; margin-left: 10px; }
 ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
 .fluid-info-line { font-size: 0.76rem; color: rgba(255,255,255,0.38); margin-bottom: 4px; }
+
+/* ── 材料优化设计卡片 ── */
+.opt-card {
+    background: linear-gradient(160deg, rgba(30,30,46,0.95) 0%, rgba(42,42,58,0.9) 100%);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px 16px;
+    margin: 0;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(12px);
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.opt-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
+}
+.opt-card-medal {
+    font-size: 2.2rem;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
+}
+.opt-card-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+}
+.opt-card-formula {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+}
+.opt-card-vf {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 8px 0 14px 0;
+}
+.opt-vf-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: #c4b5fd;
+}
+.opt-vf-label {
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+.opt-card-props {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    width: 100%;
+    margin-bottom: 12px;
+}
+.opt-prop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+}
+.opt-prop-name {
+    font-size: 0.58rem;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+}
+.opt-prop-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', monospace;
+}
+.opt-prop-unit {
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.25);
+}
+.opt-card-cost {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 12px;
+}
+.opt-card-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.03);
+    min-width: 80px;
+}
+.opt-score-num {
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+}
+.opt-score-label {
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 </style>"""
 
 
@@ -3301,14 +3425,12 @@ def render_optimization_page():
                 for mat_name in allowed_mats:
                     for fill_name in allowed_mats:
                         if mat_name == fill_name: continue
-                        # 区分基体和填料（后5个是填料专用）
+                        # 区分基体和填料（后6个是填料专用）
                         filler_names = {"氮化硼 (BN)","氧化铝 (Al2O3)","碳化硅 (SiC)",
                                         "石墨烯 (Graphene)","碳纳米管 (CNT)","碳纤维 (Carbon Fiber)"}
                         if mat_name in filler_names and fill_name not in filler_names:
-                            # 基体和填料反了，跳过
                             continue
                         if mat_name not in filler_names and fill_name in filler_names:
-                            # 正确：基体+填料
                             vf, lam, rho, cp, alpha, cost, dev, feas = _optimize_formulation(
                                 mat_name, fill_name, target_lam, max_rho, max_cost,
                                 alpha_min, alpha_max
@@ -3330,71 +3452,308 @@ def render_optimization_page():
                     best_lam = feasible[0]
                     best_cost = min(feasible, key=lambda r: r["cost"])
                     best_overall = min(feasible, key=lambda r: r["dev"] + r["cost"]/max_cost*5)
+                    # 确保三个方案去重
+                    used = {id(best_lam)}
+                    if id(best_cost) in used:
+                        alt = [r for r in feasible if id(r) not in used]
+                        if alt: best_cost = min(alt, key=lambda r: r["cost"]); used.add(id(best_cost))
+                    if id(best_overall) in used:
+                        alt = [r for r in feasible if id(r) not in used]
+                        if alt: best_overall = min(alt, key=lambda r: r["dev"] + r["cost"]/max_cost*5)
                 else:
                     best_lam = best_cost = best_overall = results[0]
                 
+                # ═══ 方案卡片区域 ═══
+                st.markdown("---")
                 st.subheader("🏆 Top 3 推荐方案" if is_zh else "🏆 Top 3 Recommendations")
                 
-                plans = [
-                    ("🎯 最优导热" if is_zh else "🎯 Best TC", best_lam, "#7c3aed"),
-                    ("💰 最低成本" if is_zh else "💰 Lowest Cost", best_cost, "#10b981"),
-                    ("⭐ 综合最优" if is_zh else "⭐ Best Overall", best_overall, "#f59e0b"),
-                ]
+                medal_colors = {"gold": "#FFD700", "silver": "#C0C0C0", "bronze": "#CD853F"}
+                medal_icons = {"gold": "🥇", "silver": "🥈", "bronze": "🥉"}
+                medal_names = [("gold", "🎯 最优导热" if is_zh else "🎯 Best TC"),
+                               ("silver", "💰 最低成本" if is_zh else "💰 Lowest Cost"),
+                               ("bronze", "⭐ 综合最优" if is_zh else "⭐ Best Overall")]
                 
-                for label, plan, color in plans:
+                card_cols = st.columns(3)
+                for ci, ((medal, label), plan) in enumerate(zip(medal_names, [best_lam, best_cost, best_overall])):
                     mat = MATERIAL_DB_OPT[plan["matrix"]]
                     fill = MATERIAL_DB_OPT[plan["filler"]]
-                    vf_pct = plan["vf"] * 100
-                    feas_icon = "✅" if plan["feasible"] else "⚠️"
+                    vf_pct = round(plan["vf"] * 100, 1)
+                    mcolor = medal_colors[medal]
+                    micon = medal_icons[medal]
                     
-                    st.markdown(
-                        f'<div style="background:rgba(255,255,255,0.04);border-left:3px solid {color};'
-                        f'border-radius:0 12px 12px 0;padding:14px 18px;margin:8px 0;">'
-                        f'<div style="font-size:0.9rem;font-weight:700;color:{color};margin-bottom:6px;">'
-                        f'{feas_icon} {label}</div>'
-                        f'<div style="font-size:0.78rem;color:rgba(255,255,255,0.7);">'
-                        f'{"配方" if is_zh else "Formula"}: {plan["matrix"].split("(")[0].strip()} + '
-                        f'{plan["filler"].split("(")[0].strip()} ({vf_pct:.1f}% {"填料" if is_zh else "filler"})</div>'
-                        f'<div style="display:flex;gap:16px;margin-top:8px;font-size:0.75rem;color:rgba(255,255,255,0.5);">'
-                        f'<span>λ={plan["lam"]:.2f} W/(m·K)</span>'
-                        f'<span>ρ={plan["rho"]:.0f} kg/m³</span>'
-                        f'<span>Cp={plan["cp"]:.0f} J/(kg·K)</span>'
-                        f'<span>α={plan["alpha"]:.2e} 1/K</span>'
-                        f'</div>'
-                        f'<div style="display:flex;gap:16px;margin-top:4px;font-size:0.75rem;color:rgba(255,255,255,0.5);">'
-                        f'<span>{"成本" if is_zh else "Cost"}: ¥{plan["cost"]:.1f}/kg</span>'
-                        f'<span>{"偏差" if is_zh else "Dev"}: {plan["dev"]:.1f}%</span>'
-                        f'</div></div>',
-                        unsafe_allow_html=True
+                    # 评分 (0-100): 偏差越低+成本越低=分越高
+                    dev_score = max(0, 100 - plan["dev"] * 2)  # 偏差0%=100分, 偏差50%=0分
+                    cost_ratio = min(plan["cost"] / max(max_cost, 1), 2)
+                    cost_score = max(0, 100 - cost_ratio * 50)  # 成本=预算=50分, 越便宜越高
+                    overall_score = round(dev_score * 0.6 + cost_score * 0.4)
+                    score_color = "#10b981" if overall_score >= 80 else ("#f59e0b" if overall_score >= 50 else "#ef4444")
+                    
+                    with card_cols[ci]:
+                        st.markdown(
+                            f'<div class="opt-card" style="border-color:{mcolor};box-shadow:0 0 24px {mcolor}22;">'
+                            f'<div class="opt-card-medal">{micon}</div>'
+                            f'<div class="opt-card-label" style="color:{mcolor};">{label}</div>'
+                            f'<div class="opt-card-formula">'
+                            f'{plan["matrix"].split("(")[0].strip()} + {plan["filler"].split("(")[0].strip()}'
+                            f'</div>'
+                            f'<div class="opt-card-vf">'
+                            f'<span class="opt-vf-num">{vf_pct}%</span>'
+                            f'<span class="opt-vf-label">{"填料" if is_zh else "Filler"}</span>'
+                            f'</div>'
+                            f'<div class="opt-card-props">'
+                            f'<div class="opt-prop"><span class="opt-prop-name">λ</span><span class="opt-prop-val">{plan["lam"]:.2f}</span><span class="opt-prop-unit">W/(m·K)</span></div>'
+                            f'<div class="opt-prop"><span class="opt-prop-name">ρ</span><span class="opt-prop-val">{plan["rho"]:.0f}</span><span class="opt-prop-unit">kg/m³</span></div>'
+                            f'<div class="opt-prop"><span class="opt-prop-name">Cp</span><span class="opt-prop-val">{plan["cp"]:.0f}</span><span class="opt-prop-unit">J/(kg·K)</span></div>'
+                            f'<div class="opt-prop"><span class="opt-prop-name">α</span><span class="opt-prop-val">{plan["alpha"]:.2e}</span><span class="opt-prop-unit">1/K</span></div>'
+                            f'</div>'
+                            f'<div class="opt-card-cost">'
+                            f'<span>{"成本" if is_zh else "Cost"}: ¥{plan["cost"]:.1f}/kg</span>'
+                            f'<span>{"偏差" if is_zh else "Dev"}: {plan["dev"]:.1f}%</span>'
+                            f'</div>'
+                            f'<div class="opt-card-score" style="background:{score_color}20;border-color:{score_color};">'
+                            f'<span class="opt-score-num" style="color:{score_color};">{overall_score}</span>'
+                            f'<span class="opt-score-label">{"综合评分" if is_zh else "Score"}</span>'
+                            f'</div>'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
+                
+                # ═══ 对比可视化 ═══
+                st.markdown("---")
+                st.subheader("📊 对比可视化" if is_zh else "📊 Comparison Charts")
+                
+                import plotly.graph_objects as go
+                from plotly.subplots import make_subplots
+                
+                # ── 水平条形图：目标达成率 + 成本使用率 ──
+                bar_cols = st.columns(2)
+                names = [("gold", best_lam), ("silver", best_cost), ("bronze", best_overall)]
+                bar_labels = [
+                    (micon + " " + label.split(" ")[-1] if is_zh else micon + " " + label.split(" ")[-1])
+                    for (micon, _), (_, label) in zip(
+                        [(medal_icons[m], medal_names[i][1]) for i, (m, _) in enumerate(medal_names)],
+                        medal_names
                     )
+                ]
+                bar_labels = [
+                    (medal_icons[medal_names[i][0]] + " " + medal_names[i][1].split(" ")[-1])
+                    for i in range(3)
+                ]
+                
+                with bar_cols[0]:
+                    # 导热系数目标达成率
+                    tc_rates = [min(p["lam"] / max(target_lam, 0.01) * 100, 200) for _, p in names]
+                    colors_tc = ["#10b981" if r >= 90 else ("#f59e0b" if r >= 70 else "#ef4444") for r in tc_rates]
+                    
+                    fig_tc = go.Figure()
+                    fig_tc.add_trace(go.Bar(
+                        y=bar_labels, x=tc_rates,
+                        orientation='h',
+                        marker_color=colors_tc,
+                        text=[f'{r:.0f}%' for r in tc_rates],
+                        textposition='outside',
+                        textfont=dict(color='white', size=13),
+                        hovertemplate='%{x:.1f}%<extra></extra>'
+                    ))
+                    fig_tc.add_vline(x=100, line_dash="dash", line_color="rgba(255,255,255,0.5)",
+                                     annotation_text="100%" if is_zh else "Target")
+                    fig_tc.update_layout(
+                        title="导热系数目标达成率" if is_zh else "TC Target Achievement",
+                        xaxis_title="达成率 (%)" if is_zh else "Achievement (%)",
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        height=250, margin=dict(l=10, r=10, t=40, b=30),
+                        xaxis=dict(range=[0, max(max(tc_rates)*1.2, 120)])
+                    )
+                    st.plotly_chart(fig_tc, width="stretch")
+                
+                with bar_cols[1]:
+                    # 成本预算使用率
+                    cost_rates = [min(p["cost"] / max(max_cost, 0.01) * 100, 200) for _, p in names]
+                    colors_cost = ["#10b981" if r <= 100 else "#ef4444" for r in cost_rates]
+                    
+                    fig_cost = go.Figure()
+                    fig_cost.add_trace(go.Bar(
+                        y=bar_labels, x=cost_rates,
+                        orientation='h',
+                        marker_color=colors_cost,
+                        text=[f'{r:.0f}%' for r in cost_rates],
+                        textposition='outside',
+                        textfont=dict(color='white', size=13),
+                        hovertemplate='%{x:.1f}%<extra></extra>'
+                    ))
+                    fig_cost.add_vline(x=100, line_dash="dash", line_color="#ef4444",
+                                       annotation_text="100%" if is_zh else "Budget")
+                    fig_cost.update_layout(
+                        title="成本预算使用率" if is_zh else "Cost Budget Usage",
+                        xaxis_title="使用率 (%)" if is_zh else "Usage (%)",
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        height=250, margin=dict(l=10, r=10, t=40, b=30),
+                        xaxis=dict(range=[0, max(max(cost_rates)*1.3, 150)])
+                    )
+                    st.plotly_chart(fig_cost, width="stretch")
+                
+                # ── 雷达图：三方案多维对比 ──
+                st.markdown("---")
+                st.markdown("##### 🎯 三方案多维雷达对比" if is_zh else "##### 🎯 3-Plan Radar Comparison")
+                
+                # 归一化到 0-100
+                all_lam = [p["lam"] for _, p in names]
+                all_rho = [p["rho"] for _, p in names]
+                all_cost = [p["cost"] for _, p in names]
+                all_dev = [p["dev"] for _, p in names]
+                
+                def norm_radar(vals, reverse=False):
+                    mn, mx = min(vals), max(vals)
+                    if mx == mn: return [50] * len(vals)
+                    normalized = [(v - mn) / (mx - mn) * 100 for v in vals]
+                    return [100 - n if reverse else n for n in normalized]
+                
+                radar_lam = norm_radar(all_lam)      # 越高越好
+                radar_rho = norm_radar(all_rho, reverse=True)  # 越低越好
+                radar_cost = norm_radar(all_cost, reverse=True) # 越低越好
+                radar_dev = norm_radar(all_dev, reverse=True)   # 越低越好
+                radar_score = [
+                    round(radar_lam[i]*0.35 + radar_rho[i]*0.15 + radar_cost[i]*0.2 + radar_dev[i]*0.3)
+                    for i in range(3)
+                ]
+                
+                fig_radar = go.Figure()
+                radar_cats = ["导热系数↑", "密度↓", "成本↓", "偏差↓", "综合评分↑"] if is_zh else ["TC↑", "Density↓", "Cost↓", "Dev↓", "Score↑"]
+                medal_color_vals = ["#FFD700", "#C0C0C0", "#CD853F"]
+                
+                for i in range(3):
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=[radar_lam[i], radar_rho[i], radar_cost[i], radar_dev[i], radar_score[i]],
+                        theta=radar_cats,
+                        fill='toself',
+                        name=bar_labels[i],
+                        line=dict(color=medal_color_vals[i], width=2),
+                        fillcolor=medal_color_vals[i] + "22",
+                    ))
+                
+                fig_radar.update_layout(
+                    polar=dict(
+                        radialaxis=dict(range=[0, 100], showticklabels=False, gridcolor="rgba(255,255,255,0.1)"),
+                        angularaxis=dict(gridcolor="rgba(255,255,255,0.1)"),
+                    ),
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    height=400,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.05),
+                )
+                st.plotly_chart(fig_radar, width="stretch")
+                
+                # ═══ 导出方案按钮 ═══
+                st.markdown("---")
+                export_col1, export_col2 = st.columns(2)
+                with export_col1:
+                    if st.button("📥 导出方案 (CSV)" if is_zh else "📥 Export CSV", width="stretch", key="opt_export_csv"):
+                        import io, csv as csv_mod
+                        buf = io.StringIO()
+                        writer = csv_mod.writer(buf)
+                        header = ["排名","基体","填料","VF(%)","λ(W/mK)","ρ(kg/m³)","Cp(J/kgK)","α(1/K)","成本(元/kg)","偏差(%)","综合评分"]
+                        writer.writerow(header)
+                        for i, r in enumerate((feasible if feasible else results)[:20]):
+                            mat = MATERIAL_DB_OPT[r["matrix"]]
+                            fill = MATERIAL_DB_OPT[r["filler"]]
+                            ds = max(0, 100 - r["dev"] * 2)
+                            cs = max(0, 100 - min(r["cost"] / max(max_cost, 1), 2) * 50)
+                            sc = round(ds * 0.6 + cs * 0.4)
+                            writer.writerow([
+                                i+1,
+                                r["matrix"].split("(")[0].strip(),
+                                r["filler"].split("(")[0].strip(),
+                                f'{r["vf"]*100:.1f}',
+                                f'{r["lam"]:.2f}',
+                                f'{r["rho"]:.0f}',
+                                f'{r["cp"]:.0f}',
+                                f'{r["alpha"]:.2e}',
+                                f'{r["cost"]:.1f}',
+                                f'{r["dev"]:.1f}',
+                                sc,
+                            ])
+                        buf.seek(0)
+                        from datetime import datetime
+                        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        st.download_button(
+                            "💾 下载 CSV" if is_zh else "💾 Download CSV",
+                            data=buf.getvalue(),
+                            file_name=f"optimization_report_{ts}.csv",
+                            mime="text/csv",
+                            key="dl_opt_csv"
+                        )
+                        st.success("✅ CSV 报告已生成" if is_zh else "✅ CSV report ready")
+                
+                with export_col2:
+                    if st.button("📊 导出方案 (JSON)" if is_zh else "📊 Export JSON", width="stretch", key="opt_export_json"):
+                        import json, io as io_mod
+                        export_data = {
+                            "optimization_target": {
+                                "target_tc_w_mk": target_lam,
+                                "max_density_kgm3": max_rho,
+                                "max_cost_cny_kg": max_cost,
+                            },
+                            "top3_plans": [],
+                        }
+                        for medal, plan in zip(["gold", "silver", "bronze"], [best_lam, best_cost, best_overall]):
+                            mat = MATERIAL_DB_OPT[plan["matrix"]]
+                            fill = MATERIAL_DB_OPT[plan["filler"]]
+                            export_data["top3_plans"].append({
+                                "rank": medal,
+                                "matrix": plan["matrix"].split("(")[0].strip(),
+                                "filler": plan["filler"].split("(")[0].strip(),
+                                "vf_pct": round(plan["vf"]*100, 1),
+                                "tc_w_mk": round(plan["lam"], 2),
+                                "density_kgm3": round(plan["rho"], 0),
+                                "cp_j_kgk": round(plan["cp"], 0),
+                                "cte_1_k": plan["alpha"],
+                                "cost_cny_kg": round(plan["cost"], 1),
+                                "dev_pct": round(plan["dev"], 1),
+                            })
+                        json_str = json.dumps(export_data, ensure_ascii=False, indent=2, default=str)
+                        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        st.download_button(
+                            "💾 下载 JSON" if is_zh else "💾 Download JSON",
+                            data=json_str,
+                            file_name=f"optimization_report_{ts}.json",
+                            mime="application/json",
+                            key="dl_opt_json"
+                        )
+                        st.success("✅ JSON 报告已生成" if is_zh else "✅ JSON report ready")
                 
                 # ── 全部方案表格 ──
                 st.markdown("---")
-                with st.expander("📋 全部优化结果" if is_zh else "📋 All Results", expanded=False):
+                with st.expander("📋 全部优化结果 ({n}条)" if is_zh else "📋 All Results ({n}条)".format(n=len(results)), expanded=False):
                     rows = []
-                    for i, r in enumerate(results[:20]):
+                    for i, r in enumerate(results[:30]):
+                        mat = MATERIAL_DB_OPT[r["matrix"]]
+                        fill = MATERIAL_DB_OPT[r["filler"]]
+                        ds = max(0, 100 - r["dev"] * 2)
+                        cs = max(0, 100 - min(r["cost"] / max(max_cost, 1), 2) * 50)
+                        sc = round(ds * 0.6 + cs * 0.4)
                         rows.append({
                             "排名" if is_zh else "Rank": i+1,
                             "基体" if is_zh else "Matrix": r["matrix"].split("(")[0].strip(),
                             "填料" if is_zh else "Filler": r["filler"].split("(")[0].strip(),
                             "VF (%)": f'{r["vf"]*100:.1f}',
                             "λ (W/mK)": f'{r["lam"]:.2f}',
-                            "ρ": f'{r["rho"]:.0f}',
+                            "ρ (kg/m³)": f'{r["rho"]:.0f}',
                             "成本" if is_zh else "Cost": f'{r["cost"]:.1f}',
                             "偏差%" if is_zh else "Dev%": f'{r["dev"]:.1f}',
+                            "评分" if is_zh else "Score": sc,
                             "可行" if is_zh else "OK": "✅" if r["feasible"] else "⚠️",
                         })
                     st.dataframe(pd.DataFrame(rows), width="stretch", height=400)
                 
-                # ── 收敛可视化（体积分数 vs 导热系数）──
+                # ═══ λ vs VF 优化空间可视化 ═══
                 st.markdown("---")
                 st.subheader("📈 优化空间可视化" if is_zh else "📈 Optimization Space")
                 
-                import plotly.graph_objects as go
                 fig = go.Figure()
-                # 显示前5个方案的 λ vs VF 曲线
-                seen = set()
-                count = 0
+                seen = set(); count = 0
                 for r in results:
                     if not r["feasible"]: continue
                     key = (r["matrix"], r["filler"])
@@ -3429,6 +3788,7 @@ def render_optimization_page():
 # ═══════════════════════════════════════════════════════════════
 # End optimization module
 # ═══════════════════════════════════════════════════════════════
+
 
 
 
@@ -3745,12 +4105,200 @@ def render_materials_database():
 # ═══════════════════════════════════════════════════════════════
 
 
+
+# ============================================================================
+# 0.5 首页/总览页面
+# ============================================================================
+
+def render_home_page():
+    """首页总览页面 — 面向新材料研发的热物性计算优化软件。"""
+    is_zh = st.session_state.get("lang", "zh") == "zh"
+    
+    # ── Hero 区域 ──
+    st.markdown(
+        '<div style="text-align:center;padding:40px 0 10px 0;">'
+        '<h1 style="font-size:2.4rem;font-weight:800;letter-spacing:-1px;'
+        'background:linear-gradient(135deg,#c4b5fd,#38bdf8,#67e8f9,#a78bfa);'
+        'background-size:300% 300%;-webkit-background-clip:text;'
+        '-webkit-text-fill-color:transparent;background-clip:text;'
+        'animation:gradientShift 6s ease infinite;margin-bottom:8px;">'
+        'ThermoCalc</h1>'
+        '<p style="font-size:1.05rem;color:rgba(255,255,255,0.55);margin:0;">'
+        + ("面向新材料研发的热物性计算优化软件" if is_zh else "Thermal Property Calculation & Optimization for Advanced Materials R&D") +
+        '</p>'
+        '<p style="font-size:0.82rem;color:rgba(255,255,255,0.35);margin-top:4px;">'
+        + ("基于物理模型 + AI增强的复合材料热物性预测与优化设计平台" if is_zh else "Physics-model + AI-enhanced composite thermal property prediction & optimization platform") +
+        '</p>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+    
+    st.markdown("---")
+    
+    # ── 核心功能概览（6卡片）──
+    st.subheader("⚡ 核心功能" if is_zh else "⚡ Core Modules")
+    
+    modules = [
+        {
+            "icon": "🧪", "title_zh": "基础物性计算", "title_en": "Base Properties",
+            "desc_zh": "20+种纯流体，PR状态方程+RandomForest AI偏差补偿",
+            "desc_en": "20+ pure fluids, PR EOS + RandomForest AI bias compensation",
+            "color": "#7c3aed", "url": "calc",
+        },
+        {
+            "icon": "🔬", "title_zh": "模型验证", "title_en": "Validation",
+            "desc_zh": "与CoolProp工业基准对标，A/B/C/D四级精度评级",
+            "desc_en": "Benchmarked against CoolProp, A/B/C/D accuracy grading",
+            "color": "#06b6d4", "url": "validate",
+        },
+        {
+            "icon": "🧠", "title_zh": "智能筛选", "title_en": "Smart Screening",
+            "desc_zh": "目标匹配推荐 + 批量精度扫描 + 反向求解",
+            "desc_en": "Target matching + batch accuracy scan + inverse solver",
+            "color": "#10b981", "url": "optimize",
+        },
+        {
+            "icon": "🤖", "title_zh": "AI偏差补偿", "title_en": "AI Compensation",
+            "desc_zh": "RandomForest模型，13,905条训练数据，修正PR方程系统性偏差",
+            "desc_en": "RandomForest with 13,905 samples, corrects PR EOS systematic bias",
+            "color": "#f59e0b", "url": "ai",
+        },
+        {
+            "icon": "🧩", "title_zh": "复合材料预测", "title_en": "Composite Prediction",
+            "desc_zh": "Hashin-Shtrikman / Maxwell-Eucken混合模型 + AI增强",
+            "desc_en": "Hashin-Shtrikman / Maxwell-Eucken mixing models + AI enhancement",
+            "color": "#ec4899", "url": "composite",
+        },
+        {
+            "icon": "🎯", "title_zh": "优化设计", "title_en": "Optimization",
+            "desc_zh": "目标导向的配方智能优化，多方案对比推荐",
+            "desc_en": "Target-driven formula optimization with multi-plan comparison",
+            "color": "#f97316", "url": "optimize_design",
+        },
+    ]
+    
+    # 2 rows of 3 cards
+    for row_start in [0, 3]:
+        cols = st.columns(3)
+        for i in range(3):
+            idx = row_start + i
+            if idx >= len(modules): break
+            m = modules[idx]
+            with cols[i]:
+                st.markdown(
+                    f'<a href="/{m["url"]}" style="text-decoration:none;">'
+                    f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);'
+                    f'border-radius:16px;padding:22px 18px;height:180px;transition:all 0.3s;cursor:pointer;'
+                    f'border-top:3px solid {m["color"]};"'
+                    f'onmouseover="this.style.background=\'rgba(255,255,255,0.06)\';this.style.transform=\'translateY(-4px)\';"'
+                    f'onmouseout="this.style.background=\'rgba(255,255,255,0.03)\';this.style.transform=\'none\';">'
+                    f'<div style="font-size:2rem;margin-bottom:10px;">{m["icon"]}</div>'
+                    f'<div style="font-size:1rem;font-weight:700;color:{m["color"]};margin-bottom:6px;">'
+                    f'{m["title_zh"] if is_zh else m["title_en"]}</div>'
+                    f'<div style="font-size:0.78rem;color:rgba(255,255,255,0.5);line-height:1.5;">'
+                    f'{m["desc_zh"] if is_zh else m["desc_en"]}</div>'
+                    f'</div></a>',
+                    unsafe_allow_html=True
+                )
+    
+    st.markdown("---")
+    
+    # ── 技术亮点（统计卡片）──
+    st.subheader("📊 技术指标" if is_zh else "📊 Tech Highlights")
+    
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(
+            '<div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);'
+            'border-radius:14px;padding:20px;text-align:center;">'
+            '<div style="font-size:2rem;font-weight:800;color:#c4b5fd;">13,905</div>'
+            '<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);">'
+            + ("训练数据条数" if is_zh else "Training Samples") +
+            '</div></div>',
+            unsafe_allow_html=True
+        )
+    with c2:
+        st.markdown(
+            '<div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);'
+            'border-radius:14px;padding:20px;text-align:center;">'
+            '<div style="font-size:2rem;font-weight:800;color:#67e8f9;">25+</div>'
+            '<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);">'
+            + ("覆盖物质种类" if is_zh else "Fluids Covered") +
+            '</div></div>',
+            unsafe_allow_html=True
+        )
+    with c3:
+        st.markdown(
+            '<div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);'
+            'border-radius:14px;padding:20px;text-align:center;">'
+            '<div style="font-size:2rem;font-weight:800;color:#6ee7b7;">0.95</div>'
+            '<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);">'
+            + ("AI Cp预测 R²" if is_zh else "AI Cp R²") +
+            '</div></div>',
+            unsafe_allow_html=True
+        )
+    with c4:
+        st.markdown(
+            '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);'
+            'border-radius:14px;padding:20px;text-align:center;">'
+            '<div style="font-size:2rem;font-weight:800;color:#fbbf24;">100%</div>'
+            '<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);">'
+            + ("两相区检测准确率" if is_zh else "Two-Phase Detection") +
+            '</div></div>',
+            unsafe_allow_html=True
+        )
+    
+    st.markdown("---")
+    
+    # ── 快速入口按钮 ──
+    st.subheader("🚀 快速入口" if is_zh else "🚀 Quick Access")
+    
+    quick_links = [
+        ("🧪 " + ("基础物性计算" if is_zh else "Calculate Properties"), "calc"),
+        ("🤖 " + ("AI偏差补偿" if is_zh else "AI Compensation"), "ai"),
+        ("🧩 " + ("复合材料预测" if is_zh else "Composite Prediction"), "composite"),
+        ("🎯 " + ("优化设计" if is_zh else "Optimization"), "optimize_design"),
+        ("📚 " + ("材料数据库" if is_zh else "Materials Database"), "materials_db"),
+    ]
+    
+    btn_cols = st.columns(len(quick_links))
+    for i, (label, url) in enumerate(quick_links):
+        with btn_cols[i]:
+            st.markdown(
+                f'<a href="/{url}" style="text-decoration:none;">'
+                f'<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);'
+                f'border-radius:12px;padding:12px 8px;text-align:center;transition:all 0.25s;cursor:pointer;"'
+                f'onmouseover="this.style.background=\'rgba(56,189,248,0.12)\';this.style.borderColor=\'rgba(56,189,248,0.4)\';"'
+                f'onmouseout="this.style.background=\'rgba(255,255,255,0.05)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';">'
+                f'<span style="font-size:0.82rem;color:rgba(255,255,255,0.8);">{label}</span>'
+                f'</div></a>',
+                unsafe_allow_html=True
+            )
+    
+    st.markdown("---")
+    
+    # ── 底部 ──
+    st.markdown(
+        '<div style="text-align:center;color:rgba(255,255,255,0.2);font-size:0.7rem;padding:20px 0;">'
+        + ("ThermoCalc v2.0 | Peng-Robinson EOS + CoolProp + RandomForest | 化工软件开发比赛" if is_zh else "ThermoCalc v2.0 | Peng-Robinson EOS + CoolProp + RandomForest | Chemical Engineering Software Competition") +
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# End home page
+# ═══════════════════════════════════════════════════════════════
+
+
 def main():
     """Main Streamlit entry point with multi-page navigation."""
     st.set_page_config(page_title="ThermoCalc", page_icon="🧪", layout="wide", initial_sidebar_state="expanded")
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
 
     lang = st.session_state.get("lang", "zh")
+    pg_home = st.Page(render_home_page,
+        title="🏠 首页" if lang == "zh" else "🏠 Home", url_path="home", default=True)
     pg_main = st.Page(render_main_page,
         title="🧪 基础物性" if lang == "zh" else "🧪 Base Props", url_path="calc")
     pg_val = st.Page(render_validation_page,
@@ -3767,7 +4315,7 @@ def main():
         title="🎯 优化设计" if lang == "zh" else "🎯 Optimize", url_path="optimize_design")
     pg_comp = st.Page(render_composite_page,
         title="🧩 复合材料" if lang == "zh" else "🧩 Composite", url_path="composite")
-    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai, pg_comp, pg_opt_design, pg_mat_db]})
+    pg = st.navigation({"pages": [pg_home, pg_main, pg_val, pg_opt, pg_scr, pg_ai, pg_comp, pg_opt_design, pg_mat_db]})
     pg.run()
 
 

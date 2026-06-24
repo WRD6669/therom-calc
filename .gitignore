@@ -1,0 +1,27 @@
+# 模型与训练数据（运行时生成，体积大）
+models/
+*.pkl
+*.npz
+*.csv
+
+# 临时/辅助文件
+_add_home.py
+_get_main.py
+_main_func_new.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.bak
+*.bak2
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
