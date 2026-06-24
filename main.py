@@ -3863,7 +3863,7 @@ def render_materials_database():
                     r=[norm_vals["λ"][i], norm_vals["Cp"][i], norm_vals["α"][i], norm_vals["ρ"][i]],
                     theta=cats, fill='toself', name=name,
                     line=dict(color=colors_r[i], width=2),
-                    fillcolor=colors_r[i] + "22",
+                    fillcolor=colors_r[i] + "44",  # rgba-style opacity, Plotly accepts hex+alpha
                 ))
             
             fig_radar.update_layout(
