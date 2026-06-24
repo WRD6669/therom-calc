@@ -3886,8 +3886,8 @@ def render_materials_database():
             {
                 "title_zh": "低热膨胀陶瓷基板 — 5G通信设备封装",
                 "title_en": "Low-CTE Ceramic Substrate — 5G Packaging",
-                "desc_zh": "AlN陶瓷基板，导热系数180 W/(m·K)，热膨胀系数4.5×10⁻⁶/K，与Si芯片匹配。",
-                "desc_en": "AlN substrate with TC 180 W/(m·K), CTE 4.5×10⁻⁶/K matching Si chips.",
+                "desc_zh": "AlN陶瓷基板，导热系数180 W/(m·K)，热膨胀系数4.5×10^-6/K，与Si芯片匹配。",
+                "desc_en": "AlN substrate with TC 180 W/(m·K), CTE 4.5×10^-6/K matching Si chips.",
             },
             {
                 "title_zh": "相变储能材料 — 光伏热管理",
