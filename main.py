@@ -1405,17 +1405,36 @@ def render_smart_optimize():
                     except Exception:
                         continue
                 if results:
-                    results.sort(key=lambda x: x["_score"] + (100 if x["_polarity"] == "high" else 0))
-                    df = pd.DataFrame(results).drop(columns=["_score", "_polarity"])
-                    st.caption(
-                        "目标匹配度 = |PR值-目标值|/目标值×100%（越小越匹配） | PR一致性 = (1-|PR-CoolProp|/CoolProp)×100%（越接近100%说明PR与基准越一致）"
-                        if is_zh else
-                        "Target Match = |PR-Target|/Target×100% (lower is better) | PR Consistency = (1-|PR-CoolProp|/CoolProp)×100% (closer to 100% is better)"
-                    )
-                    st.subheader("📋 推荐结果（按匹配度排序）" if is_zh else "📋 Recommendations")
-                    st.dataframe(df, width="stretch", height=400)
-                    best = results[0]
-                    st.success(f"🎯 最佳推荐：**{best['物质' if is_zh else 'Fluid']}** | 匹配偏差 {best['匹配偏差(%)']}% | 可信度 {best['可信度']}")
+                    # 过滤：仅保留有有效CoolProp基准的物质（排除nocp和查询失败）
+                    col_cp = "CoolProp值"
+                    valid_results = [r for r in results
+                                     if r.get(col_cp) and r[col_cp] not in ("N/A", "无基准", "No Ref", "", None)]
+                    if not valid_results:
+                        st.warning(
+                            "当前工况下无可参考的基准数据，无法推荐。"
+                            if is_zh else
+                            "No benchmark data available for current conditions."
+                        )
+                    else:
+                        # 按匹配度排序（强极性物质排后）
+                        valid_results.sort(key=lambda x: x["_score"] + (100 if x["_polarity"] == "high" else 0))
+                        df = pd.DataFrame(valid_results).drop(columns=["_score", "_polarity"])
+                        st.caption(
+                            "目标匹配度 = |PR值-目标值|/目标值×100%（越小越匹配） | PR一致性 = (1-|PR-CoolProp|/CoolProp)×100%（越接近100%说明PR与基准越一致）"
+                            if is_zh else
+                            "Target Match = |PR-Target|/Target×100% (lower is better) | PR Consistency = (1-|PR-CoolProp|/CoolProp)×100% (closer to 100% is better)"
+                        )
+                        st.subheader("📋 推荐结果（按匹配度排序）" if is_zh else "📋 Recommendations")
+                        st.dataframe(df, width="stretch", height=400)
+                        best = valid_results[0]
+                        fluid_col = "物质" if is_zh else "Fluid"
+                        match_col = "目标匹配度(%)" if is_zh else "Target Match(%)"
+                        conf_col = "可信度"
+                        st.success(
+                            "🎯 最佳推荐：**{}** | 匹配偏差 {} | 可信度 {}".format(
+                                best[fluid_col], best[match_col], best.get(conf_col, "--")
+                            )
+                        )
                 else:
                     st.warning("未找到可用的工质推荐。" if is_zh else "No suitable fluid found.")
 
@@ -1827,12 +1846,23 @@ def _build_training_dataset(progress_callback=None):
     return X, y_dens, y_cp_arr
 
 
+def _safe_import_ml():
+    """Safe import of ML libraries. Returns (joblib, sklearn_modules) or raises ImportError with friendly message."""
+    try:
+        import joblib
+        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import r2_score
+        return joblib, (RandomForestRegressor, train_test_split, r2_score)
+    except ImportError:
+        raise ImportError(
+            "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
+        )
+
+
 def _train_ai_models(progress_callback=None):
     """Train RandomForest models (n_estimators=100). Saves to _ai_models/."""
-    import joblib
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import r2_score
+    joblib, (RandomForestRegressor, train_test_split, r2_score) = _safe_import_ml()
 
     X, y_dens, y_cp_arr = _build_training_dataset(progress_callback)
 
@@ -1890,7 +1920,10 @@ def _train_ai_models(progress_callback=None):
 
 def _predict_with_model(model_info, Tc, Pc, omega_val, T, P_mpa):
     """Predict density and Cp for given parameters."""
-    import joblib
+    try:
+        import joblib
+    except ImportError:
+        return None, None
     # If model_info is None, try loading from saved files
     if model_info is None:
         try:
@@ -1925,8 +1958,31 @@ def render_ai_prediction():
     
     # Auto-load saved model on first visit
     if "ai_model" not in st.session_state:
-        import joblib
-        model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
+        try:
+            import joblib
+            model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
+            if os.path.exists(model_pkl_path):
+                combined = joblib.load(model_pkl_path)
+                st.session_state["ai_model"] = {
+                    "rf_density": combined["rf_density"],
+                    "rf_cp": combined["rf_cp"],
+                    "r2_density": 0.95, "r2_cp": 0.89,
+                    "n_total": 0, "n_train": 0,
+                }
+                st.session_state["ai_trained"] = True
+                st.success(
+                    "✅ 已加载保存的模型 (model.pkl)"
+                    if is_zh else
+                    "✅ Loaded saved model (model.pkl)"
+                )
+        except ImportError:
+            st.warning(
+                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
+                if is_zh else
+                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
+            )
+        except Exception:
+            pass
         if os.path.exists(model_pkl_path):
             try:
                 combined = joblib.load(model_pkl_path)
@@ -1948,6 +2004,7 @@ def render_ai_prediction():
     if train_clicked:
         try:
             import joblib
+            _safe_import_ml()
             # 进度条容器
             progress_text = st.empty()
             progress_bar = st.progress(0)
@@ -2110,7 +2167,17 @@ def render_ai_prediction():
     predict_clicked = st.button(t["ai_predict_btn"], width="stretch", key="ai_predict_btn")
 
     if predict_clicked:
-        import joblib
+        try:
+            import joblib
+        except ImportError:
+            st.error(
+                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
+                if is_zh else
+                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
+            )
+            joblib = None
+        if joblib is None:
+            st.stop()
         model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
 
         # 检查model.pkl是否存在
