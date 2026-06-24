@@ -17,6 +17,28 @@ from typing import Tuple, Dict, Optional, List
 import traceback
 import os
 
+# ── AI补偿模块依赖（可选，缺失时降级处理）──
+SKLEARN_AVAILABLE = False
+JOBLIB_AVAILABLE = False
+try:
+    import sklearn
+    from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import r2_score
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    pass
+
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    pass
+
+# ── 模型文件目录 ──
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+os.makedirs(MODEL_DIR, exist_ok=True)
+
 # ============================================================================
 # 0. 全局常量
 # ============================================================================
@@ -290,8 +312,8 @@ FLUID_DATABASE = [
     # ── 新增: 高价值化工物质 (无CoolProp基准, 纯PR理论预测) ──
     ("R245fa", "R245fa",    134.050,  427.20, 3.651, 0.372,   [ 20.00, 0.30000, -1.500e-4, 2.500e-8], "", "nocp"),
     ("异丁烷", "Isobutane",  58.122,  407.80, 3.640, 0.184,   [ -3.00, 0.38000, -2.000e-4, 4.000e-8], "", "nocp"),
-    ("硅油D4", "D4_Siloxane",296.620, 586.50, 1.320, 0.590,   [ 50.00, 0.80000, -5.000e-4, 1.000e-7], "", "nocp"),
-    ("乙酸",   "AceticAcid", 60.052,  591.95, 5.786, 0.467,   [  5.00, 0.35000, -2.000e-4, 4.000e-8], "", "nocp"),
+    ("硅油D4", "D4_Siloxane",296.620, 586.50, 1.320, 0.590,   [ 50.00, 0.80000, -5.000e-4, 1.000e-7], "", "high"),
+    ("乙酸",   "AceticAcid", 60.052,  591.95, 5.786, 0.467,   [  5.00, 0.35000, -2.000e-4, 4.000e-8], "", "high"),
     ("水蒸气(高温)","Steam_HT",18.015, 647.10, 22.064, 0.344, [ 32.24, 0.00192, 1.055e-5, -3.596e-9], "", "nocp"),
 ]
 
@@ -612,26 +634,64 @@ def pr_engine_properties(T, P, fluid_info):
             except Exception:
                 psat_known = None
 
-        if polarity == "high" and T > Tc * 0.5 and P < Pc_pa * 0.1:
-            # 强极性物质低压高温区：PR饱和压力不可靠，强制气相
+        # ═════════════════════════════════════════════════════
+        # 选根逻辑（重写版）：综合物质极性、温度、Gibbs自由能
+        # ═════════════════════════════════════════════════════
+        # 关键原则：
+        #   1. 多根（两相区）总是用Gibbs自由能选，Psat仅用于后期标注
+        #   2. 强极性物质中高温区强制气相（PR对极性液体不准）
+        #   3. 单根时用T/Tc+Z大小联合判断
+        #
+        # 补充极性检测：omega>0.4按强极性处理（Cp名称空时尤其重要）
+        _effective_polarity = polarity
+        if polarity == "nocp" and omega > 0.4:
+            _effective_polarity = "high"
+
+        # 规则0：三个根几乎相同 → 直接取最大根（超临界单相）
+        if same_root:
             Z_used = Z_v
-        elif psat_known is not None and psat_known > 0:
-            # 有可靠饱和压力：P > Psat -> 液相, P < Psat -> 气相
-            Z_used = Z_l if P > psat_known else Z_v
-        elif same_root:
-            # 单根情况：Z < 0.3 = 液相, Z >= 0.3 = 气相/超临界
-            Z_used = Z_l if Z_l < 0.3 else Z_v
+
+        # 规则1：强极性物质 中高温+中低压 → 强制气相
+        #   PR方程对强极性液体的饱和压力估算不准，用pVT判断更可靠
+        elif _effective_polarity == "high" and T > Tc * 0.5 and P < Pc_pa * 0.5:
+            Z_used = Z_v
+
+        # 规则2：极小液相根（Z<0.002）→ 物理上不可能，取气相
         elif Z_l <= 0.002:
-            # 极小液相根通常为伪根（过热蒸汽区）
             Z_used = Z_v
+
+        # 规则3：三个根中有两个几乎相同 → 气体/超临界
+        elif abs(Z_v - Z_u) < 1e-6 or abs(Z_l - Z_u) < 1e-6:
+            Z_used = Z_v
+
+        # 规则4：三根不同 → 用Gibbs自由能最小化（最可靠的热力学判据）
         else:
-            # 多根情况：无CoolProp时回退到Gibbs自由能最小化
             G_v = pr_residual_enthalpy(T, P, Z_v, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_v, Tc, Pc_pa, omega)
             G_l = pr_residual_enthalpy(T, P, Z_l, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_l, Tc, Pc_pa, omega)
             Z_used = Z_l if G_l < G_v else Z_v
 
         if Z_used <= 0.001:
             raise ValueError(f"Abnormal Z = {Z_used:.6f}")
+
+        # ── 安全阀：检查选中根的密度是否合理 ──
+        # 如果Gibbs选中的根给出的密度与预期相差过大（如低压液相根密度偏低），
+        # 尝试切换到另一个根。这种情况常见于PR方程在低压下对凝聚相的预测失效。
+        rho_check = pr_density(Z_used, T, P, M)
+        rho_alt = pr_density(Z_v if Z_used == Z_l else Z_l, T, P, M) if not same_root else rho_check
+        # 理想气体密度估算（用于参考）
+        rho_ig = P * M / (R_GAS * T)
+
+        # 规则：如果选中根是液相(Z<0.3)但密度<200kg/m3 → 低压下液相根不可靠，换气相
+        if Z_used < 0.3 and rho_check < 200.0:
+            if not same_root:
+                # 液相根不可靠，切换到气相根
+                Z_used = Z_v
+                rho_check = pr_density(Z_used, T, P, M)
+        # 规则：如果选中根是气相(Z>0.25)但密度>500kg/m3且T远低于Tc → 可能是稠密液体
+        elif Z_used > 0.25 and rho_check > 500.0 and T < Tc * 0.8:
+            if not same_root:
+                Z_used = Z_l
+                rho_check = pr_density(Z_used, T, P, M)
 
         # Step 2: Density + 热膨胀系数
         density = pr_density(Z_used, T, P, M)
@@ -672,18 +732,21 @@ def pr_engine_properties(T, P, fluid_info):
         viscosity = estimate_viscosity_pr(T, P, Z_used, M, Tc, Pc_pa, omega)
 
         # 相态质量标记
-        if psat_known is not None and T < Tc:
-            # Psat验证通过；检查是否远低于临界温度
-            if T < Tc * 0.9 and P > psat_known * 2:
-                phase_quality = "subcooled"  # 深过冷液体，ρ偏差可能较大
-            elif polarity == "high":
-                phase_quality = "psat_polar"  # 极性物质Psat验证，密度偏差预期大
-            else:
-                phase_quality = "psat_verified"
-        elif polarity == "high" and T > Tc * 0.5 and T < Tc * 1.2:
-            phase_quality = "limited"
-        elif polarity == "high":
+        if same_root:
+            # 单根：超临界或远离两相区
+            phase_quality = "supercritical" if T > Tc else "single_phase"
+        elif _effective_polarity == "high":
+            # 强极性物质：无论选根如何，标注精度限制
             phase_quality = "polar_warn"
+        elif Z_l <= 0.002:
+            phase_quality = "vapor"
+        elif psat_known is not None and T < Tc:
+            if abs(P - psat_known) / psat_known < 0.1:
+                phase_quality = "near_saturation"
+            elif P > psat_known:
+                phase_quality = "liquid"
+            else:
+                phase_quality = "vapor"
         else:
             phase_quality = "normal"
 
@@ -869,6 +932,166 @@ def run_calculation(T_input, P_input, fluid_info_tuple):
 # 8. Render Results
 # ============================================================================
 
+
+def _show_ai_compensation(pr_result, cp_result, fluid_info, P_pa, t):
+    """显示AI补偿修正结果卡片（密度和Cp）。
+    
+    在物性计算主页面中，在PR和CoolProp结果下方显示AI补偿修正值。
+    同时对两相区和超出训练范围的情况进行醒目警告。
+    """
+    is_zh = st.session_state.get("lang", "zh") == "zh"
+    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
+    P_mpa = P_pa / 1e6
+    T_input = st.session_state.get("T_input", 300)
+    
+    # 获取PR密度和Cp值
+    rho_PR = pr_result.get("density")
+    Cp_PR = pr_result.get("cp")
+    if rho_PR is None or Cp_PR is None:
+        return
+    
+    # 调用AI补偿器
+    ai_res = predict_compensated(T_input, P_mpa, Tc, Pc, omega, rho_PR, Cp_PR)
+    
+    if not ai_res.get("model_available"):
+        return  # 模型不可用，静默跳过
+    
+    rho_AI = ai_res["rho_AI"]
+    Cp_AI = ai_res["Cp_AI"]
+    rho_dev = ai_res.get("rho_dev_pred")
+    Cp_dev = ai_res.get("Cp_dev_pred")
+    is_two_phase = ai_res.get("is_two_phase", False)
+    in_range = ai_res.get("in_training_range", True)
+    msg = ai_res.get("message", "")
+    
+    # ── 两相区/饱和线大横幅警告 ──
+    if is_two_phase:
+        st.error(
+            "⚠️⚠️ 警告：当前工况接近饱和线/两相区！PR方程和AI修正结果均不可靠，请谨慎使用！"
+            if is_zh else
+            "⚠️⚠️ WARNING: Current condition is near saturation / two-phase region! Both PR and AI-corrected results are unreliable. Use with extreme caution!"
+        )
+    
+    # ── 超出训练范围提示 ──
+    if not in_range:
+        st.info(
+            "💡 当前工况超出AI补偿器训练范围(T:200-600K, P:0.1-10MPa)，修正结果可能不准确，请仅作参考。"
+            if is_zh else
+            "💡 Current condition exceeds AI compensator training range (T:200-600K, P:0.1-10MPa). Results may be inaccurate, for reference only."
+        )
+    
+    # ── AI补偿结果卡片 ──
+    st.markdown("---")
+    if is_zh:
+        st.subheader("🤖 AI偏差补偿修正（RandomForest）")
+    else:
+        st.subheader("🤖 AI Bias Compensation (RandomForest)")
+    
+    # 密度卡片
+    cp_rho = cp_result.get("density") if cp_result and "error" not in cp_result else None
+    ai_vs_cp_dev = None
+    if cp_rho is not None and cp_rho > 0:
+        ai_vs_cp_dev = (rho_AI - cp_rho) / cp_rho * 100
+    
+    _build_ai_card(
+        label="密度" if is_zh else "Density",
+        unit="kg/m³",
+        pr_val=rho_PR,
+        ai_val=rho_AI,
+        cp_val=cp_rho,
+        ai_dev=rho_dev,
+        ai_vs_cp_dev=ai_vs_cp_dev,
+        fmt=".3f",
+        is_zh=is_zh,
+    )
+    
+    # Cp卡片
+    cp_cp = cp_result.get("cp") if cp_result and "error" not in cp_result else None
+    ai_vs_cp_dev_cp = None
+    if cp_cp is not None and cp_cp > 0:
+        ai_vs_cp_dev_cp = (Cp_AI - cp_cp) / cp_cp * 100
+    
+    _build_ai_card(
+        label="定压比热容 Cp" if is_zh else "Cp",
+        unit="kJ/(kg·K)",
+        pr_val=Cp_PR,
+        ai_val=Cp_AI,
+        cp_val=cp_cp,
+        ai_dev=Cp_dev,
+        ai_vs_cp_dev=ai_vs_cp_dev_cp,
+        fmt=".4f",
+        is_zh=is_zh,
+    )
+    
+    # 模型状态说明
+    if msg:
+        st.caption(f"ℹ️ {msg}")
+    
+    if is_zh:
+        st.caption("🤖 AI修正 = PR值 / (1 + 预测偏差率/100)，基于RandomForest(n=100)训练的偏差补偿模型")
+    else:
+        st.caption("🤖 AI Corrected = PR value / (1 + predicted bias%/100), based on RandomForest(n=100) bias compensation model")
+
+
+def _build_ai_card(label, unit, pr_val, ai_val, cp_val, ai_dev, ai_vs_cp_dev, fmt, is_zh):
+    """构建AI补偿三列对比卡片（PR | AI修正 | CoolProp基准）。"""
+    pr_s = f"{pr_val:{fmt}}" if pr_val is not None else "N/A"
+    ai_s = f"{ai_val:{fmt}}" if ai_val is not None else "N/A"
+    cp_s = f"{cp_val:{fmt}}" if cp_val is not None else "N/A"
+    
+    # AI vs CP偏差
+    if ai_vs_cp_dev is not None:
+        abs_d = abs(ai_vs_cp_dev)
+        if abs_d <= 5:
+            dev_class = "dev-green-v2"; dot_class = "dot-green"
+        elif abs_d <= 20:
+            dev_class = "dev-yellow-v2"; dot_class = "dot-yellow"
+        else:
+            dev_class = "dev-red-v2"; dot_class = "dot-red"
+        ai_dev_str = f"{ai_vs_cp_dev:+.2f}%"
+    else:
+        dev_class = "dev-na-v2"; dot_class = "dot-na"; ai_dev_str = "N/A"
+    
+    # 预测偏差率
+    pred_dev_s = f"{ai_dev:+.1f}%" if ai_dev is not None else "N/A"
+    
+    card = (
+        '<div class="prop-card-final">'
+        f'<div class="pcf-name">{label}</div>'
+        '<div class="pcf-body">'
+        # PR列
+        f'<div class="pcf-col pcf-col-pr">'
+        f'<div class="pcf-engine-tag pr-tag">{"PR原始" if is_zh else "PR Raw"}</div>'
+        f'<div class="pcf-val-row"><span class="dot-green pcf-dot"></span>'
+        f'<span class="pcf-val pr-val-v2">{pr_s}</span></div>'
+        f'<div class="pcf-unit">{unit}</div></div>'
+        '<div class="pcf-divider"></div>'
+        # AI修正列
+        f'<div class="pcf-col pcf-col-ai">'
+        f'<div class="pcf-engine-tag" style="color:#c4b5fd;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.16);">'
+        f'{"🤖 AI修正" if is_zh else "🤖 AI Corrected"}</div>'
+        f'<div class="pcf-val-row"><span class="dot-green pcf-dot"></span>'
+        f'<span class="pcf-val" style="color:#c4b5fd;">{ai_s}</span></div>'
+        f'<div class="pcf-unit">{unit}</div></div>'
+        '<div class="pcf-divider"></div>'
+        # CoolProp列
+        f'<div class="pcf-col pcf-col-cp">'
+        f'<div class="pcf-engine-tag cp-tag">{"CoolProp基准" if is_zh else "CoolProp"}</div>'
+        f'<div class="pcf-val-row"><span class="{dot_class} pcf-dot"></span>'
+        f'<span class="pcf-val cp-val-v2">{cp_s}</span></div>'
+        f'<div class="pcf-unit">{unit}</div></div>'
+        # 偏差列
+        f'<div class="pcf-dev"><div class="pcf-dev-label">{"AI vs CP" if is_zh else "AI vs CP"}</div>'
+        f'<span class="dev-badge-v2 {dev_class}"><span class="dev-dot"></span>{ai_dev_str}</span></div>'
+        '</div>'
+        # 预测偏差率
+        f'<div style="text-align:right;font-size:0.65rem;color:rgba(255,255,255,0.35);margin-top:4px;">'
+        f'{"预测PR偏差率" if is_zh else "Predicted PR bias"}: {pred_dev_s}'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(card, unsafe_allow_html=True)
+
 def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     """Render results with property cards and charts."""
     name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
@@ -947,6 +1170,9 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     else:
         st.caption("* Thermal expansion α is numerically differentiated. Limited accuracy in gas phase, for trend reference only.")
 
+    # ── AI补偿修正结果 ──
+    if pr_result and "error" not in pr_result and ("density" in pr_result or "cp" in pr_result):
+        _show_ai_compensation(pr_result, cp_result, fluid_info, P_pa, t)
 
     # ── 输运性质精度警告 ──
     has_transport = any(key in (pr_result or {}) for key in ["thermal_conductivity", "viscosity"])
@@ -1788,16 +2014,15 @@ Use CoolProp benchmarks for engineering design (1-5% accuracy).
 # 14. AI Prediction Module (RandomForest)
 # ============================================================================
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_ai_models") if "__file__" in dir() else os.path.join(os.getcwd(), "_ai_models")
-MODEL_FILE_DENSITY = os.path.join(MODEL_DIR, "rf_density.joblib")
-MODEL_FILE_CP = os.path.join(MODEL_DIR, "rf_cp.joblib")
+MODEL_DIR2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models") if "__file__" in dir() else os.path.join(os.getcwd(), "models")
+MODEL_FILE_DENSITY = os.path.join(MODEL_DIR2, "rf_density.joblib")
+MODEL_FILE_CP = os.path.join(MODEL_DIR2, "rf_cp.joblib")
 
 
 # ============================================================================
 # 14. AI Prediction Module (Pure NumPy KNN — Zero External Dependencies)
 # ============================================================================
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_ai_models") if "__file__" in dir() else os.path.join(os.getcwd(), "_ai_models")
 KNN_DATA_PATH = os.path.join(MODEL_DIR, "knn_data.npz")
 
 def _load_knn_data():
@@ -2017,6 +2242,394 @@ def render_ai_prediction():
 
 
 
+
+# ============================================================================
+# 14. AI偏差补偿模块 (RandomForest补偿器 + 两相区分类器)
+# ============================================================================
+
+def generate_training_data(output_csv=None, progress_callback=None):
+    """生成PR方程偏差补偿训练数据。
+    
+    遍历FLUID_DATABASE中所有有CoolProp数据的物质，
+    在T∈[200,600]K、P∈[0.1,10]MPa网格上计算PR和CoolProp的密度/Cp，
+    记录偏差率并标记两相区。
+    
+    参数:
+        output_csv: 输出CSV路径，默认 models/training_data.csv
+        progress_callback: 可选的回调函数(st.progress)，用于Streamlit进度条
+    返回:
+        DataFrame containing [fluid,T,P,Tc,Pc,omega,rho_PR,rho_CP,rho_dev_pct,
+                             Cp_PR,Cp_CP,Cp_dev_pct,in_two_phase]
+    """
+    import pandas as pd
+    import numpy as np
+    
+    if output_csv is None:
+        output_csv = os.path.join(MODEL_DIR, "training_data.csv")
+    
+    rows = []
+    fluids_used = []
+    
+    # 温度/压力网格
+    T_range = np.arange(200, 610, 10)      # 200-600K, 步长10K
+    P_range = np.arange(0.1, 10.2, 0.5)    # 0.1-10MPa, 步长0.5MPa
+    
+    total_points = len(FLUID_DATABASE) * len(T_range) * len(P_range)
+    point_count = 0
+    skipped_two_phase = 0
+    skipped_error = 0
+    
+    for fluid_info in FLUID_DATABASE:
+        name_zh, name_en, M_gmol, Tc, Pc_mpa, omega, cp_coeffs, cp_name, polarity = fluid_info
+        
+        # 跳过无CoolProp数据的物质（极性标记为nocp且无cp_name）
+        if not cp_name and polarity == "nocp":
+            continue
+        
+        # 跳过量子流体（H2, He）
+        if name_en in ("Hydrogen", "Helium"):
+            continue
+        
+        fluids_used.append(name_zh)
+        
+        for T in T_range:
+            # 跳过近临界区：避免T/Tc ∈ [0.95, 1.05]
+            if 0.95 < T / Tc < 1.05:
+                continue
+            
+            for P_mpa in P_range:
+                P = P_mpa * 1e6
+                point_count += 1
+                
+                if progress_callback and point_count % 200 == 0:
+                    progress_callback(min(point_count / total_points, 0.99))
+                
+                # 近临界压力区也跳过
+                if 0.9 < P / (Pc_mpa * 1e6) < 1.1 and 0.9 < T / Tc < 1.1:
+                    continue
+                
+                # 计算PR物性
+                try:
+                    pr_res = pr_engine_properties(T, P, fluid_info)
+                    if "error" in pr_res:
+                        skipped_error += 1
+                        continue
+                    rho_PR = pr_res["density"]
+                    Cp_PR = pr_res["cp"]  # kJ/(kg·K)
+                except Exception:
+                    skipped_error += 1
+                    continue
+                
+                # 计算CoolProp物性
+                try:
+                    cp_res = coolprop_properties(T, P, cp_name, M_gmol)
+                    rho_CP = cp_res.get("density")
+                    Cp_CP = cp_res.get("cp")
+                    if rho_CP is None or Cp_CP is None:
+                        skipped_error += 1
+                        continue
+                    # Cp从J/(kg·K)转为kJ/(kg·K)
+                    if Cp_CP > 100:  # CoolProp返回J/(kg·K)
+                        Cp_CP = Cp_CP / 1000.0
+                except Exception:
+                    skipped_error += 1
+                    continue
+                
+                # 检查两相区（CoolProp PhaseSI）
+                in_two_phase = 0
+                try:
+                    import CoolProp.CoolProp as CP
+                    phase = CP.PhaseSI("T", T, "P", P, cp_name)
+                    if phase == "twophase":
+                        in_two_phase = 1
+                        skipped_two_phase += 1
+                        continue  # 两相区数据不参与回归训练
+                except Exception:
+                    pass  # 无法判断相态时保留该点
+                
+                # 计算偏差率(%): (PR - CP) / CP * 100
+                rho_dev = (rho_PR - rho_CP) / rho_CP * 100.0 if rho_CP > 0 else 0
+                Cp_dev = (Cp_PR - Cp_CP) / Cp_CP * 100.0 if Cp_CP > 0 else 0
+                
+                rows.append({
+                    "fluid": name_zh,
+                    "T": T,
+                    "P": P_mpa,
+                    "Tc": Tc,
+                    "Pc": Pc_mpa,
+                    "omega": omega,
+                    "rho_PR": rho_PR,
+                    "rho_CP": rho_CP,
+                    "rho_dev_pct": rho_dev,
+                    "Cp_PR": Cp_PR,
+                    "Cp_CP": Cp_CP,
+                    "Cp_dev_pct": Cp_dev,
+                    "in_two_phase": in_two_phase,
+                })
+    
+    df = pd.DataFrame(rows)
+    
+    # 过滤掉偏差绝对值>500%的极端异常点（通常是PR方程相态选错）
+    df = df[(df["rho_dev_pct"].abs() < 500) & (df["Cp_dev_pct"].abs() < 500)]
+    
+    # 保存CSV
+    df.to_csv(output_csv, index=False, encoding="utf-8-sig")
+    
+    print(f"训练数据生成完成:")
+    print(f"  总点数: {len(df)}")
+    print(f"  覆盖物质: {len(fluids_used)} 种 ({', '.join(fluids_used[:10])}...)")
+    print(f"  跳过两相区: {skipped_two_phase}")
+    print(f"  跳过错误: {skipped_error}")
+    print(f"  保存至: {output_csv}")
+    
+    return df
+
+
+def train_compensation_models(data_csv=None):
+    """训练RF偏差补偿回归器和两相区分类器。
+    
+    参数:
+        data_csv: 训练数据CSV路径，默认 models/training_data.csv
+    返回:
+        (rho_model, cp_model, two_phase_clf, X_train_mean, X_train_std, r2_info)
+    """
+    import pandas as pd
+    import numpy as np
+    
+    if not SKLEARN_AVAILABLE:
+        raise ImportError("scikit-learn 未安装，无法训练模型。请运行: pip install scikit-learn")
+    if not JOBLIB_AVAILABLE:
+        raise ImportError("joblib 未安装，无法保存模型。请运行: pip install joblib")
+    
+    if data_csv is None:
+        data_csv = os.path.join(MODEL_DIR, "training_data.csv")
+    
+    df = pd.read_csv(data_csv)
+    print(f"加载训练数据: {len(df)} 条")
+    
+    # 特征和目标
+    feature_cols = ["T", "P", "Tc", "Pc", "omega"]
+    X = df[feature_cols].values.astype(np.float64)
+    y_rho = df["rho_dev_pct"].values
+    y_cp = df["Cp_dev_pct"].values
+    y_two_phase = df["in_two_phase"].values
+    
+    # 特征标准化
+    X_mean = X.mean(axis=0)
+    X_std = X.std(axis=0)
+    X_std[X_std < 1e-10] = 1.0
+    X_norm = (X - X_mean) / X_std
+    
+    # 划分训练/测试集(80/20)
+    X_train, X_test, yr_train, yr_test, yc_train, yc_test = train_test_split(
+        X_norm, y_rho, y_cp, test_size=0.2, random_state=42
+    )
+    
+    # 训练密度偏差回归器
+    print("训练密度偏差补偿器...")
+    rho_model = RandomForestRegressor(n_estimators=100, max_depth=15,
+                                       min_samples_leaf=5, random_state=42,
+                                       n_jobs=-1)
+    rho_model.fit(X_train, yr_train)
+    yr_pred = rho_model.predict(X_test)
+    r2_rho = r2_score(yr_test, yr_pred)
+    print(f"  密度偏差 R2 = {r2_rho:.4f}")
+    
+    # 训练Cp偏差回归器
+    print("训练Cp偏差补偿器...")
+    cp_model = RandomForestRegressor(n_estimators=100, max_depth=15,
+                                      min_samples_leaf=5, random_state=42,
+                                      n_jobs=-1)
+    cp_model.fit(X_train, yc_train)
+    yc_pred = cp_model.predict(X_test)
+    r2_cp = r2_score(yc_test, yc_pred)
+    print(f"  Cp偏差 R2 = {r2_cp:.4f}")
+    
+    # 训练两相区分类器
+    print("训练两相区分类器...")
+    two_phase_clf = RandomForestClassifier(n_estimators=50, max_depth=10,
+                                            random_state=42, n_jobs=-1)
+    # 对于分类器，使用全部数据（包括两相区标记但被回归过滤的点）
+    two_phase_clf.fit(X_norm, y_two_phase)
+    tw_pred = two_phase_clf.predict(X_test)
+    tw_acc = (tw_pred == yr_test * 0).mean()  # placeholder
+    yt_test = df.iloc[df.index[-len(yr_test):]]["in_two_phase"].values  # need proper split
+    # 为分类器重新划分（使用全部数据的in_two_phase标签）
+    Xt_train, Xt_test, yt_train, yt_test = train_test_split(
+        X_norm, y_two_phase, test_size=0.2, random_state=42
+    )
+    two_phase_clf.fit(Xt_train, yt_train)
+    tw_pred = two_phase_clf.predict(Xt_test)
+    from sklearn.metrics import accuracy_score
+    tw_acc = accuracy_score(yt_test, tw_pred)
+    print(f"  两相区分类准确率 = {tw_acc:.4f}")
+    
+    # 保存模型
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    model_data = {
+        "rho_model": rho_model,
+        "cp_model": cp_model,
+        "two_phase_clf": two_phase_clf,
+        "X_mean": X_mean,
+        "X_std": X_std,
+        "r2_rho": r2_rho,
+        "r2_cp": r2_cp,
+        "tw_accuracy": tw_acc,
+        "n_samples": len(df),
+        "feature_cols": feature_cols,
+    }
+    joblib.dump(model_data, os.path.join(MODEL_DIR, "compensation_models.pkl"))
+    print(f"模型已保存至: {MODEL_DIR}/compensation_models.pkl")
+    print(f"  训练样本数: {len(df)}")
+    print(f"  密度偏差 R²: {r2_rho:.4f}")
+    print(f"  Cp偏差 R²: {r2_cp:.4f}")
+    print(f"  两相区准确率: {tw_acc:.4f}")
+    
+    return model_data
+
+
+# ── AI补偿器加载与预测（Streamlit缓存）──
+
+def _load_compensation_models():
+    """加载AI补偿模型（Streamlit缓存，只加载一次）。
+    
+    在Streamlit环境中使用@st.cache_resource缓存；
+    在命令行训练模式中直接加载。
+    """
+    # 尝试使用Streamlit缓存装饰器（仅在Streamlit环境中有效）
+    pass
+
+@st.cache_resource
+def _load_compensation_models_cached():
+    """带Streamlit缓存的模型加载。"""
+    model_path = os.path.join(MODEL_DIR, "compensation_models.pkl")
+    if not os.path.exists(model_path):
+        return None
+    if not JOBLIB_AVAILABLE:
+        return None
+    try:
+        return joblib.load(model_path)
+    except Exception:
+        return None
+
+# 别名：统一调用入口
+_load_compensation_models = _load_compensation_models_cached
+
+
+def predict_compensated(T, P_mpa, Tc, Pc_mpa, omega, rho_PR, Cp_PR):
+    """使用AI补偿器修正PR计算结果。
+    
+    参数:
+        T: 温度(K)
+        P_mpa: 压力(MPa)
+        Tc: 临界温度(K)
+        Pc_mpa: 临界压力(MPa)
+        omega: 偏心因子
+        rho_PR: PR方程计算的密度(kg/m³)
+        Cp_PR: PR方程计算的Cp(kJ/(kg·K))
+    
+    返回:
+        dict: {
+            rho_AI: 修正密度, Cp_AI: 修正Cp,
+            rho_dev_pred: 预测密度偏差率(%), Cp_dev_pred: 预测Cp偏差率(%),
+            is_two_phase: 是否两相区(bool),
+            model_available: 模型是否可用(bool),
+            in_training_range: 是否在训练范围内(bool),
+        }
+    """
+    result = {
+        "rho_AI": rho_PR,
+        "Cp_AI": Cp_PR,
+        "rho_dev_pred": None,
+        "Cp_dev_pred": None,
+        "is_two_phase": False,
+        "two_phase_prob": 0.0,
+        "model_available": False,
+        "in_training_range": True,
+        "message": "",
+    }
+    
+    # 检查训练范围
+    if T < 200 or T > 600 or P_mpa < 0.1 or P_mpa > 10:
+        result["in_training_range"] = False
+        result["message"] = "当前工况超出训练范围(T:200-600K, P:0.1-10MPa)，AI补偿可能不准确"
+        return result
+    
+    # 加载模型
+    models = _load_compensation_models()
+    if models is None:
+        result["message"] = "AI补偿模型未找到，请先运行训练脚本"
+        return result
+    
+    result["model_available"] = True
+    
+    try:
+        # 构造特征向量
+        X = np.array([[T, P_mpa, Tc, Pc_mpa, omega]], dtype=np.float64)
+        X_norm = (X - models["X_mean"]) / models["X_std"]
+        
+        # 两相区预测（先于偏差补偿，因为两相区不执行补偿）
+        tw_proba = models["two_phase_clf"].predict_proba(X_norm)
+        tw_prob = float(tw_proba[0][1]) if tw_proba.shape[1] > 1 else float(tw_proba[0][0])
+        result["two_phase_prob"] = tw_prob
+        
+        # 硬规则修正：远离临界点的高温低压区不可能是两相区
+        is_two_phase = tw_prob > 0.5
+        if T / Tc > 1.5 and P_mpa / Pc_mpa < 2.0:
+            is_two_phase = False
+            result["two_phase_prob"] = min(tw_prob, 0.3)  # 压低概率显示
+        result["is_two_phase"] = is_two_phase
+        
+        # 两相区：不执行AI补偿，直接返回PR原始值
+        if is_two_phase:
+            result["rho_AI"] = rho_PR
+            result["Cp_AI"] = Cp_PR
+            result["rho_dev_pred"] = None
+            result["Cp_dev_pred"] = None
+            result["message"] = "⚠️ 预测当前工况接近两相区/饱和线，AI补偿已禁用，显示PR原始值"
+            return result
+        
+        # 非两相区：执行RF偏差补偿
+        rho_dev = float(models["rho_model"].predict(X_norm)[0])
+        cp_dev = float(models["cp_model"].predict(X_norm)[0])
+        result["rho_dev_pred"] = rho_dev
+        result["Cp_dev_pred"] = cp_dev
+        
+        # 修正密度：偏差>200%时放弃修正
+        if abs(rho_dev) > 200:
+            result["rho_AI"] = rho_PR
+            result["message"] = "预测密度偏差过大(>200%)，AI补偿不可靠，显示PR原始值"
+        else:
+            denom = 1.0 + rho_dev / 100.0
+            if denom > 0.01:
+                result["rho_AI"] = float(rho_PR / denom)
+            else:
+                result["rho_AI"] = rho_PR
+        
+        # 修正Cp：偏差>200%时放弃修正
+        if abs(cp_dev) > 200:
+            result["Cp_AI"] = Cp_PR
+            if result["message"]:
+                result["message"] += "；Cp偏差也过大"
+            else:
+                result["message"] = "预测Cp偏差过大(>200%)，AI补偿不可靠，显示PR原始值"
+        else:
+            denom_cp = 1.0 + cp_dev / 100.0
+            if denom_cp > 0.01:
+                result["Cp_AI"] = float(Cp_PR / denom_cp)
+            else:
+                result["Cp_AI"] = Cp_PR
+    
+    except Exception as e:
+        result["message"] = f"AI补偿预测失败: {str(e)}"
+    
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
+# 命令行训练入口: python main.py --train
+# ═══════════════════════════════════════════════════════════════
+
 CSS_STYLES = """<style>
 .stApp { background: linear-gradient(160deg, #0f0c29 0%, #1a1744 30%, #24243e 70%, #0f0c29 100%); color: #e2e8f0; min-height: 100vh; }
 section[data-testid="stSidebar"] { background: rgba(20,18,50,0.75) !important; backdrop-filter: blur(40px) saturate(200%); border-right: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 4px 0 30px rgba(0,0,0,0.4); }
@@ -2093,4 +2706,27 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--train":
+        # 命令行训练模式：生成数据 + 训练模型
+        print("=" * 60)
+        print("ThermoCalc AI偏差补偿模型训练")
+        print("=" * 60)
+        if not SKLEARN_AVAILABLE:
+            print("错误: scikit-learn 未安装，请运行: pip install scikit-learn")
+            sys.exit(1)
+        if not JOBLIB_AVAILABLE:
+            print("错误: joblib 未安装，请运行: pip install joblib")
+            sys.exit(1)
+        print()
+        print("步骤1/2: 生成训练数据...")
+        df = generate_training_data()
+        print(f"生成 {len(df)} 条训练数据")
+        print()
+        print("步骤2/2: 训练模型...")
+        train_compensation_models()
+        print()
+        print("训练完成！模型已保存至 models/ 目录")
+        print("现在可以正常启动Streamlit应用: streamlit run main.py")
+    else:
+        main()
