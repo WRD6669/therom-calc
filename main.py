@@ -1944,37 +1944,37 @@ def render_ai_prediction():
     """Render AI prediction page."""
     t = LANG[st.session_state.get("lang", "zh")]
     is_zh = st.session_state.get("lang", "zh") == "zh"
-    
+    import os
+    model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
+
     st.header(t["ai_title"])
     st.markdown(t["ai_desc"])
     st.markdown("---")
-    
+
     # --- Section 1: Model Training ---
     col1, col2 = st.columns([2, 1])
     with col1:
         st.subheader("📊 " + ("数据集与训练" if is_zh else "Dataset & Training"))
     with col2:
         train_clicked = st.button(t["ai_train_btn"], width="stretch", key="ai_train")
-    
-    # Auto-load saved model on first visit
-    if "ai_model" not in st.session_state:
+
+    # Auto-load saved model on first visit (only if model.pkl exists)
+    if "ai_model" not in st.session_state and os.path.exists(model_pkl_path):
         try:
             import joblib
-            model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
-            if os.path.exists(model_pkl_path):
-                combined = joblib.load(model_pkl_path)
-                st.session_state["ai_model"] = {
-                    "rf_density": combined["rf_density"],
-                    "rf_cp": combined["rf_cp"],
-                    "r2_density": 0.95, "r2_cp": 0.89,
-                    "n_total": 0, "n_train": 0,
-                }
-                st.session_state["ai_trained"] = True
-                st.success(
-                    "✅ 已加载保存的模型 (model.pkl)"
-                    if is_zh else
-                    "✅ Loaded saved model (model.pkl)"
-                )
+            combined = joblib.load(model_pkl_path)
+            st.session_state["ai_model"] = {
+                "rf_density": combined["rf_density"],
+                "rf_cp": combined["rf_cp"],
+                "r2_density": 0.95, "r2_cp": 0.89,
+                "n_total": 0, "n_train": 0,
+            }
+            st.session_state["ai_trained"] = True
+            st.success(
+                "✅ 已加载保存的模型 (model.pkl)"
+                if is_zh else
+                "✅ Loaded saved model (model.pkl)"
+            )
         except ImportError:
             st.warning(
                 "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
@@ -1983,23 +1983,6 @@ def render_ai_prediction():
             )
         except Exception:
             pass
-        if os.path.exists(model_pkl_path):
-            try:
-                combined = joblib.load(model_pkl_path)
-                st.session_state["ai_model"] = {
-                    "rf_density": combined["rf_density"],
-                    "rf_cp": combined["rf_cp"],
-                    "r2_density": 0.95, "r2_cp": 0.89,
-                    "n_total": 0, "n_train": 0,
-                }
-                st.session_state["ai_trained"] = True
-                st.success(
-                    "✅ 已加载保存的模型 (model.pkl)"
-                    if is_zh else
-                    "✅ Loaded saved model (model.pkl)"
-                )
-            except Exception:
-                pass
 
     if train_clicked:
         try:
@@ -2041,13 +2024,11 @@ def render_ai_prediction():
             st.session_state["ai_model"] = model_info
             st.session_state["ai_trained"] = True
 
-            # 进度条完成
             progress_bar.progress(100)
             progress_text.text(
                 "✅ 训练完成！"
                 if is_zh else "✅ Training complete!"
             )
-            # 1秒后自动消失
             import time
             time.sleep(0.8)
             progress_text.empty()
@@ -2062,41 +2043,45 @@ def render_ai_prediction():
             )
         except ImportError as e:
             st.error(
-                "AI模块需要scikit-learn和joblib。请运行: pip install scikit-learn joblib"
+                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
                 if is_zh else
-                "AI module requires scikit-learn and joblib. Run: pip install scikit-learn joblib"
+                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
             )
             st.session_state["ai_trained"] = False
-            if 'progress_bar' in dir():
+            try:
                 progress_text.empty()
                 progress_bar.empty()
+            except Exception:
+                pass
         except Exception as e:
             st.error(f"训练失败: {e}" if is_zh else f"Training failed: {e}")
             st.session_state["ai_trained"] = False
-            if 'progress_bar' in dir():
+            try:
                 progress_text.empty()
                 progress_bar.empty()
-    
+            except Exception:
+                pass
+
     # Show model info if trained
     if st.session_state.get("ai_trained") and "ai_model" in st.session_state:
         mi = st.session_state["ai_model"]
-        
+
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            st.metric(t["ai_train_r2"] + " (ρ)", f"{mi['r2_density']:.4f}")
+            st.metric(t["ai_train_r2"] + " (ρ)", f"{mi.get('r2_density', 0):.4f}")
         with c2:
-            st.metric(t["ai_train_r2"] + " (Cp)", f"{mi['r2_cp']:.4f}")
+            st.metric(t["ai_train_r2"] + " (Cp)", f"{mi.get('r2_cp', 0):.4f}")
         with c3:
-            st.metric(t["ai_train_samples"], mi["n_samples"])
+            st.metric(t["ai_train_samples"], mi.get("n_total", mi.get("n_train", 0)))
         with c4:
-            st.metric(t["ai_n_estimators"], "150")
-        
+            st.metric(t["ai_n_estimators"], "100")
+
         # Feature importance chart
         with st.expander(t["ai_feature_importance"], expanded=False):
             importances_d = mi["rf_density"].feature_importances_
             importances_c = mi["rf_cp"].feature_importances_
             names = mi["feature_names"]
-            
+
             fig_imp = make_subplots(rows=1, cols=2, subplot_titles=(
                 "密度模型" if is_zh else "Density Model",
                 "Cp 模型" if is_zh else "Cp Model"))
@@ -2107,9 +2092,9 @@ def render_ai_prediction():
             fig_imp.update_layout(height=350, template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_imp, width="stretch")
-    
+
     st.markdown("---")
-    
+
     # --- Section 2: Unknown Material Explorer ---
     st.subheader(t["ai_unknown_mode"])
     st.markdown(t["ai_unknown_desc"])
@@ -2167,6 +2152,7 @@ def render_ai_prediction():
     predict_clicked = st.button(t["ai_predict_btn"], width="stretch", key="ai_predict_btn")
 
     if predict_clicked:
+        # 检查joblib是否可用
         try:
             import joblib
         except ImportError:
@@ -2175,12 +2161,9 @@ def render_ai_prediction():
                 if is_zh else
                 "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
             )
-            joblib = None
-        if joblib is None:
             st.stop()
-        model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
 
-        # 检查model.pkl是否存在
+        # model_pkl_path already defined at top of function
         if not os.path.exists(model_pkl_path):
             st.error(
                 "⚠️ 模型未训练，请先点击「训练/更新模型」"
@@ -2207,7 +2190,7 @@ def render_ai_prediction():
                     st.markdown("---")
                     st.subheader(t["ai_predict_header"])
 
-                    # 主结果：格式化为 "密度 = X.XXX kg/m³，定压比热容 = X.XXX kJ/(kg·K)"
+                    # 主结果
                     st.markdown(
                         f'<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);'
                         f'border-radius:16px;padding:24px;margin:16px 0;text-align:center;">'
@@ -2258,87 +2241,10 @@ def render_ai_prediction():
     # Footer
     st.markdown("---")
     st.caption(
-        "🤖 AI模块基于 RandomForest | 特征: [Tc, Pc, ω, T, P] | 目标: 密度 + Cp | 训练数据: CoolProp基准值"
+        "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e RandomForest | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp | \u8bad\u7ec3\u6570\u636e: CoolProp\u57fa\u51c6\u503c"
         if is_zh else
-        "🤖 AI Module powered by RandomForest | Features: [Tc, Pc, ω, T, P] | Targets: Density + Cp | Training data: CoolProp benchmark"
+        "\U0001f916 AI Module powered by RandomForest | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp | Training data: CoolProp benchmark"
     )
 
 
 
-CSS_STYLES = """<style>
-.stApp { background: linear-gradient(160deg, #0f0c29 0%, #1a1744 30%, #24243e 70%, #0f0c29 100%); color: #e2e8f0; min-height: 100vh; }
-section[data-testid="stSidebar"] { background: rgba(20,18,50,0.75) !important; backdrop-filter: blur(40px) saturate(200%); border-right: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 4px 0 30px rgba(0,0,0,0.4); }
-section[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
-.stButton > button { background: rgba(255,255,255,0.06) !important; backdrop-filter: blur(12px) saturate(180%); border: 1px solid rgba(255,255,255,0.12) !important; color: #e2e8f0 !important; border-radius: 14px !important; font-weight: 600 !important; transition: all 0.30s cubic-bezier(0.25,0.46,0.45,0.94) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-.stButton > button:hover { background: rgba(56,189,248,0.12) !important; border-color: rgba(56,189,248,0.6) !important; box-shadow: 0 0 30px rgba(56,189,248,0.22), 0 8px 25px rgba(0,0,0,0.5); transform: translateY(-2px) scale(1.01); color: #fff !important; }
-.stButton > button:active { transform: scale(0.97) !important; }
-input, .stNumberInput input { background: rgba(255,255,255,0.05) !important; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.10) !important; color: #e2e8f0 !important; border-radius: 12px !important; }
-input:focus { border-color: rgba(56,189,248,0.5) !important; box-shadow: 0 0 20px rgba(56,189,248,0.12) !important; background: rgba(255,255,255,0.08) !important; }
-.stSelectbox > div > div { background: rgba(255,255,255,0.05) !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,0.10) !important; }
-#MainMenu { visibility: hidden; } footer { visibility: hidden; }
-header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; border-bottom: none !important; }
-.prop-card-final { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 12px 20px 14px; margin-bottom: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03); transition: all 0.35s cubic-bezier(0.25,0.46,0.45,0.94); }
-.prop-card-final:hover { transform: translateY(-4px); border-color: rgba(56,189,248,0.22); background: rgba(255,255,255,0.07); box-shadow: 0 12px 36px rgba(0,0,0,0.40), 0 0 25px rgba(56,189,248,0.04); }
-.pcf-name { font-size: 0.70rem; text-transform: uppercase; letter-spacing: 2.0px; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 8px; }
-.pcf-body { display: flex; align-items: center; gap: 0; }
-.pcf-col { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 4px 8px; }
-.pcf-engine-tag { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 1.3px; padding: 2px 9px; border-radius: 7px; font-weight: 600; margin-bottom: 6px; }
-.pr-tag { color: #c4b5fd; background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.16); }
-.cp-tag { color: #67e8f9; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.16); }
-.pcf-val-row { display: flex; align-items: center; gap: 6px; }
-.pcf-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.dot-green { background: #6ee7b7; box-shadow: 0 0 8px rgba(110,231,183,0.45); }
-.dot-yellow { background: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.45); }
-.dot-red { background: #fb923c; box-shadow: 0 0 8px rgba(251,146,60,0.45); }
-.dot-na { background: rgba(255,255,255,0.18); }
-.pcf-val { font-size: 1.65rem; font-weight: 700; font-family: 'JetBrains Mono','Consolas','Courier New',monospace; line-height: 1.1; color: #e2e8f0; }
-.pcf-unit { font-size: 0.64rem; color: rgba(255,255,255,0.28); letter-spacing: 0.2px; }
-.pcf-divider { width: 1px; height: 65px; background: linear-gradient(180deg,transparent,rgba(255,255,255,0.12),transparent); flex-shrink: 0; margin: 0 4px; }
-.pcf-dev { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 80px; }
-.pcf-dev-label { font-size: 0.56rem; text-transform: uppercase; color: rgba(255,255,255,0.30); letter-spacing: 1px; }
-.dev-badge-v2 { font-size: 1.2rem; font-weight: 700; padding: 3px 12px; border-radius: 14px; display: inline-flex; align-items: center; gap: 5px; backdrop-filter: blur(8px); }
-.dev-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.dev-green-v2 { color: #6ee7b7; background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.16); }
-.dev-green-v2 .dev-dot { background: #6ee7b7; }
-.dev-yellow-v2 { color: #fbbf24; background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.16); }
-.dev-yellow-v2 .dev-dot { background: #fbbf24; }
-.dev-red-v2 { color: #fb923c; background: rgba(249,115,22,0.10); border: 1px solid rgba(249,115,22,0.16); }
-.dev-red-v2 .dev-dot { background: #fb923c; }
-.dev-na-v2 { color: rgba(255,255,255,0.30); background: rgba(100,116,139,0.06); }
-.status-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); margin-top: 14px; font-size: 0.73rem; color: rgba(255,255,255,0.50); }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 12px #10b981; animation: statusPulse 2s ease-in-out infinite; }
-@keyframes statusPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.title-glow { font-size: 1.7rem; font-weight: 800; background: linear-gradient(135deg,#c4b5fd,#38bdf8,#67e8f9,#c4b5fd); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: gradientShift 6s ease infinite; letter-spacing: -0.5px; }
-@keyframes gradientShift { 0%{background-position:0 50%} 50%{background-position:100% 50%} 100%{background-position:0 50%} }
-.version-chip { display: inline-block; font-size: 0.62rem; padding: 3px 12px; border-radius: 12px; background: rgba(56,189,248,0.10); backdrop-filter: blur(8px); border: 1px solid rgba(56,189,248,0.18); color: #38bdf8; font-weight: 600; letter-spacing: 1.5px; vertical-align: middle; margin-left: 10px; }
-::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
-.fluid-info-line { font-size: 0.76rem; color: rgba(255,255,255,0.38); margin-bottom: 4px; }
-</style>"""
-
-
-# ============================================================================
-# 15. Main Entry Point
-# ============================================================================
-
-def main():
-    """Main Streamlit entry point with multi-page navigation."""
-    st.set_page_config(page_title="ThermoCalc", page_icon="🧪", layout="wide", initial_sidebar_state="expanded")
-    st.markdown(CSS_STYLES, unsafe_allow_html=True)
-
-    lang = st.session_state.get("lang", "zh")
-    pg_main = st.Page(render_main_page,
-        title="🏠 物性计算" if lang == "zh" else "🏠 Calculator", url_path="calc")
-    pg_val = st.Page(render_validation_page,
-        title="🔬 模型验证" if lang == "zh" else "🔬 Validation", url_path="validate")
-    pg_opt = st.Page(render_smart_optimize,
-        title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", url_path="optimize")
-    pg_scr = st.Page(render_material_screening,
-        title="🔎 材料筛选" if lang == "zh" else "🔎 Screening", url_path="screening")
-    pg_ai = st.Page(render_ai_prediction,
-        title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
-    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai]})
-    pg.run()
-
-
-if __name__ == "__main__":
-    main()
