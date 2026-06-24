@@ -325,7 +325,6 @@ FLUID_DATABASE = [
 
 def pr_alpha(T: float, Tc: float, omega: float) -> float:
     """PR EOS alpha function. NOTE: kappa formula optimized for non-polar fluids (w<0.5). For strongly polar fluids (w>0.5), the alpha function contributes to systematic density/Cp errors."""
-    """PR EOS temperature-dependent alpha function."""
     if Tc <= 0 or T <= 0:
         return 1.0
     Tr = max(T / Tc, 1e-6)
