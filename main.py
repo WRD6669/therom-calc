@@ -1842,15 +1842,15 @@ def render_ai_prediction():
     # Check if knn_data.npz exists
     if not os.path.exists(model_pkl_path):
         st.error(
-            "\u26a0\ufe0f AI\u6a21\u578b\u6570\u636e\u6587\u4ef6 (knn_data.npz) \u672a\u627e\u5230\uff0c\u8bf7\u5148\u8fd0\u884c\u672c\u5730\u8bad\u7ec3\u811a\u672c\u751f\u6210\u3002"
+            "⚠️ AI模型数据文件 (knn_data.npz) 未找到，请先运行本地训练脚本生成。"
             if is_zh else
-            "\u26a0\ufe0f AI model data file (knn_data.npz) not found. Please run local training script first."
+            "⚠️ AI model data file (knn_data.npz) not found. Please run local training script first."
         )
         st.markdown("---")
         st.caption(
-            "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e KNN (k=7) | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp"
+            "🤖 AI模块基于 KNN (k=7) | 特征: [Tc, Pc, ω, T, P] | 目标: 密度 + Cp"
             if is_zh else
-            "\U0001f916 AI Module powered by KNN (k=7) | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp"
+            "🤖 AI Module powered by KNN (k=7) | Features: [Tc, Pc, ω, T, P] | Targets: Density + Cp"
         )
         return
 
@@ -1862,11 +1862,11 @@ def render_ai_prediction():
         n_samples = data["X_norm"].shape[0]
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.metric("\u8bad\u7ec3\u6837\u672c\u6570" if is_zh else "Training Samples", n_samples)
+            st.metric("训练样本数" if is_zh else "Training Samples", n_samples)
         with c2:
-            st.metric("\u7279\u5f81" if is_zh else "Features", "Tc, Pc, \u03c9, T, P")
+            st.metric("特征" if is_zh else "Features", "Tc, Pc, ω, T, P")
         with c3:
-            st.metric("\u7b97\u6cd5" if is_zh else "Algorithm", "KNN (k=7)")
+            st.metric("算法" if is_zh else "Algorithm", "KNN (k=7)")
     except Exception:
         pass
 
@@ -1881,7 +1881,7 @@ def render_ai_prediction():
         "acetic": {
             "label": t.get("ai_preset_acetic", "Acetic Acid"),
             "Tc": 591.95, "Pc": 5.786, "omega": 0.467,
-            "desc_zh": "\u4e59\u9178\uff08\u918b\u9178\uff09", "desc_en": "Acetic Acid",
+            "desc_zh": "乙酸（醋酸）", "desc_en": "Acetic Acid",
         },
         "r245fa": {
             "label": t.get("ai_preset_r245fa", "R245fa"),
@@ -1891,7 +1891,7 @@ def render_ai_prediction():
         "bmim_pf6": {
             "label": t.get("ai_preset_il", "[BMIM][PF6]"),
             "Tc": 860.0, "Pc": 2.40, "omega": 0.79,
-            "desc_zh": "\u79bb\u5b50\u6db2\u4f53 [BMIM][PF6]", "desc_en": "[BMIM][PF6] Ionic Liquid",
+            "desc_zh": "离子液体 [BMIM][PF6]", "desc_en": "[BMIM][PF6] Ionic Liquid",
         },
     }
 
@@ -1937,7 +1937,7 @@ def render_ai_prediction():
         dens_ai, cp_ai = _knn_predict(tc_input, pc_input, omega_input, t_input, p_input)
 
         if dens_ai is None:
-            st.error("\u9884\u6d4b\u5931\u8d25" if is_zh else "Prediction failed")
+            st.error("预测失败" if is_zh else "Prediction failed")
         else:
             st.markdown("---")
             st.subheader(t["ai_predict_header"])
@@ -1947,19 +1947,19 @@ def render_ai_prediction():
                 '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);'
                 'border-radius:16px;padding:24px;margin:16px 0;text-align:center;">'
                 '<div style="font-size:1.1rem;color:rgba(255,255,255,0.8);margin-bottom:8px;">'
-                + ("\U0001f916 AI\u9884\u6d4b\u7ed3\u679c (KNN k=7)" if is_zh else "\U0001f916 AI Prediction (KNN k=7)") +
+                + ("🤖 AI预测结果 (KNN k=7)" if is_zh else "🤖 AI Prediction (KNN k=7)") +
                 '</div>'
                 '<div style="font-size:1.6rem;font-weight:700;color:#c4b5fd;">'
-                + ("\u5bc6\u5ea6" if is_zh else "Density") + ' = ' + f'{dens_ai:.3f}' + ' kg/m\u00b3'
+                + ("密度" if is_zh else "Density") + ' = ' + f'{dens_ai:.3f}' + ' kg/m³'
                 '</div>'
                 '<div style="font-size:1.6rem;font-weight:700;color:#67e8f9;">'
-                + ("\u5b9a\u538b\u6bd4\u70ed\u5bb9" if is_zh else "Cp") + ' = ' + f'{cp_ai:.4f}' + ' kJ/(kg\u00b7K)'
+                + ("定压比热容" if is_zh else "Cp") + ' = ' + f'{cp_ai:.4f}' + ' kJ/(kg·K)'
                 '</div></div>',
                 unsafe_allow_html=True
             )
 
             # PR comparison
-            synthetic_fi = ("\u672a\u77e5\u6750\u6599" if is_zh else "Unknown",
+            synthetic_fi = ("未知材料" if is_zh else "Unknown",
                            "Unknown", 100.0, tc_input, pc_input, omega_input,
                            [20.0, 0.05, 0.0, 0.0], "Water", "low")
             P_pa_val = p_input * 1e6
@@ -1977,23 +1977,23 @@ def render_ai_prediction():
                 dev_c = (cp_ai - pr_cp_val) / pr_cp_val * 100 if (pr_cp_val and pr_cp_val > 0) else None
                 comp_cols = st.columns(4)
                 with comp_cols[0]:
-                    st.metric(t["ai_pred_density"] + " (kg/m\u00b3)", f"{dens_ai:.3f}")
+                    st.metric(t["ai_pred_density"] + " (kg/m³)", f"{dens_ai:.3f}")
                 with comp_cols[1]:
-                    label_pr = "PR\u65b9\u7a0b\u5bc6\u5ea6" if is_zh else "PR Density"
-                    st.metric(label_pr + " (kg/m\u00b3)", f"{pr_dens:.3f}",
+                    label_pr = "PR方程密度" if is_zh else "PR Density"
+                    st.metric(label_pr + " (kg/m³)", f"{pr_dens:.3f}",
                              delta=f"{dev_d:+.1f}%" if dev_d is not None else None)
                 with comp_cols[2]:
-                    st.metric(t["ai_pred_cp"] + " (kJ/(kg\u00b7K))", f"{cp_ai:.4f}")
+                    st.metric(t["ai_pred_cp"] + " (kJ/(kg·K))", f"{cp_ai:.4f}")
                 with comp_cols[3]:
-                    label_pr_cp = "PR\u65b9\u7a0b Cp" if is_zh else "PR Cp"
-                    st.metric(label_pr_cp + " (kJ/(kg\u00b7K))", f"{pr_cp_val:.4f}" if pr_cp_val else "N/A",
+                    label_pr_cp = "PR方程 Cp" if is_zh else "PR Cp"
+                    st.metric(label_pr_cp + " (kJ/(kg·K))", f"{pr_cp_val:.4f}" if pr_cp_val else "N/A",
                              delta=f"{dev_c:+.1f}%" if dev_c is not None else None)
 
     st.markdown("---")
     st.caption(
-        "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e KNN (k=7) | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp | \u8bad\u7ec3\u6570\u636e: 4190 \u6761 CoolProp+PR"
+        "🤖 AI模块基于 KNN (k=7) | 特征: [Tc, Pc, ω, T, P] | 目标: 密度 + Cp | 训练数据: 4190 条 CoolProp+PR"
         if is_zh else
-        "\U0001f916 AI Module powered by KNN (k=7) | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp | Training data: 4190 CoolProp+PR samples"
+        "🤖 AI Module powered by KNN (k=7) | Features: [Tc, Pc, ω, T, P] | Targets: Density + Cp | Training data: 4190 CoolProp+PR samples"
     )
 
 
@@ -2071,10 +2071,6 @@ def main():
         title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
     pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai]})
     pg.run()
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":
