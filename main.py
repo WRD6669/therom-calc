@@ -412,21 +412,27 @@ def coolprop_properties(T, P, fluid, M):
     try:
         import CoolProp.CoolProp as CP
 
-        density = CP.PropsSI("D", "T", T, "P", P, fluid)
-        cp_mass = CP.PropsSI("C", "T", T, "P", P, fluid)   # J/(kg*K)
-        cv_mass = CP.PropsSI("O", "T", T, "P", P, fluid)   # J/(kg*K)
-        tc = CP.PropsSI("L", "T", T, "P", P, fluid)        # W/(m*K)
-        visc = CP.PropsSI("V", "T", T, "P", P, fluid)      # Pa*s
+        def _safe_prop(key, default=None):
+            try:
+                return CP.PropsSI(key, "T", T, "P", P, fluid)
+            except Exception:
+                return default
 
-        if density <= 0 or np.isnan(density):
-            raise ValueError(f"Invalid density: {density}")
+        density = _safe_prop("D")
+        if density is None or density <= 0 or np.isnan(density):
+            return {"error": f"Invalid density for {fluid}"}
+
+        cp_mass = _safe_prop("C")
+        cv_mass = _safe_prop("O")
+        tc = _safe_prop("L")        # Not available for all fluids
+        visc = _safe_prop("V")      # Not available for all fluids
 
         return {
-            "density": density,                  # kg/m^3
-            "cp": cp_mass / 1000.0,              # kJ/(kg*K)
-            "cv": cv_mass / 1000.0,              # kJ/(kg*K)
-            "thermal_conductivity": tc,          # W/(m*K)
-            "viscosity": visc * 1e6,             # muPa*s
+            "density": density,
+            "cp": cp_mass / 1000.0 if cp_mass else None,
+            "cv": cv_mass / 1000.0 if cv_mass else None,
+            "thermal_conductivity": tc if tc else None,
+            "viscosity": visc * 1e6 if visc else None,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -453,13 +459,26 @@ def pr_engine_properties(T, P, fluid_info):
         # Step 1: Solve cubic for Z
         Z_v, Z_l, Z_u = solve_pr_cubic(T, P, Tc, Pc_pa, omega)
 
-        # Select physically meaningful root
-        if T < Tc:
-            Z_used = Z_v  # Largest root = vapor-like
+        # Select physically meaningful root.
+        # Strategy:
+        #   1. All roots identical -> use Z magnitude: Z < 0.3 = liquid, else vapor
+        #   2. Multiple distinct roots -> Gibbs free energy minimization
+        rho_v = pr_density(Z_v, T, P, M)
+        rho_l = pr_density(Z_l, T, P, M)
+        same_root = abs(Z_v - Z_l) < 1e-8 and abs(Z_v - Z_u) < 1e-8
+        if same_root:
+            # Single root case: use Z magnitude as phase indicator
+            Z_used = Z_l if Z_l < 0.3 else Z_v
+        elif Z_l <= 0.002:
+            # Very small liquid root is likely spurious (overheated vapor region)
+            Z_used = Z_v
         else:
-            Z_used = Z_v  # Supercritical
+            # Multiple distinct roots: Gibbs free energy minimization
+            G_v = pr_residual_enthalpy(T, P, Z_v, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_v, Tc, Pc_pa, omega)
+            G_l = pr_residual_enthalpy(T, P, Z_l, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_l, Tc, Pc_pa, omega)
+            Z_used = Z_l if G_l < G_v else Z_v
 
-        if Z_used <= 0.01:
+        if Z_used <= 0.001:
             raise ValueError(f"Abnormal Z = {Z_used:.6f}")
 
         # Step 2: Density
@@ -1077,8 +1096,11 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     return buf.getvalue()
 
 
-def render_validation_page(t):
+
+
+def render_validation_page():
     """Render the model validation page."""
+    t = LANG[st.session_state.get("lang", "zh")]
     st.header(t["validate_title"])
     st.markdown(t["validate_desc"])
     st.markdown("---")
@@ -1146,15 +1168,9 @@ def render_validation_page(t):
 
 
 
-def main():
-    """Main Streamlit application entry point."""
 
-    st.set_page_config(
-        page_title="ThermoCalc",
-        page_icon="🧪",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
+def render_main_page():
+    """Render the main calculation page."""
 
     # CSS (dark sci-tech + property cards)
     st.markdown("""<style>
@@ -1536,5 +1552,30 @@ def main():
     st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
 
 
+
+
+def main():
+    """Main Streamlit entry point with multi-page navigation."""
+
+    st.set_page_config(
+        page_title="ThermoCalc",
+        page_icon="🧪",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    lang = st.session_state.get("lang", "zh")
+    pg_main = st.Page(
+        render_main_page,
+        title="🏠 物性计算" if lang == "zh" else "🏠 Calculator",
+        url_path="calc"
+    )
+    pg_val = st.Page(
+        render_validation_page,
+        title="🔬 模型验证" if lang == "zh" else "🔬 Validation",
+        url_path="validate"
+    )
+    pg = st.navigation({"pages": [pg_main, pg_val]})
+    pg.run()
 if __name__ == "__main__":
     main()
