@@ -3147,8 +3147,8 @@ def render_composite_page():
         )
         vol_frac = vol_frac_pct / 100.0  # convert % to decimal 0.0-0.6
     with col4:
-        st.metric("填料体积" if is_zh else "Filler Vol.", f"{vol_frac*100:.0f}%")
-        st.metric("基体体积" if is_zh else "Matrix Vol.", f"{(1-vol_frac)*100:.0f}%")
+        st.metric("填料体积分数" if is_zh else "Filler VF", f"{vol_frac_pct}%")
+        st.metric("基体体积分数" if is_zh else "Matrix VF", f"{100 - vol_frac_pct}%")
     
     st.markdown("---")
     
