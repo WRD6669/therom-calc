@@ -4165,7 +4165,6 @@ def render_home_page():
          "color": "#f97316", "url": "optimize_design"},
     ]
     
-    # 2 rows of 3 cards — use st.container + html without <a> wrapper
     for row_start in [0, 3]:
         cols = st.columns(3)
         for i in range(3):
@@ -4173,9 +4172,10 @@ def render_home_page():
             if idx >= len(modules): break
             m = modules[idx]
             with cols[i]:
+                # Simple styled card + st.link_button for navigation
                 st.markdown(
                     f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);'
-                    f'border-radius:16px;padding:22px 18px;height:180px;'
+                    f'border-radius:16px;padding:22px 18px 12px 18px;'
                     f'border-top:3px solid {m["color"]};">'
                     f'<div style="font-size:2rem;margin-bottom:10px;">{m["icon"]}</div>'
                     f'<div style="font-size:1rem;font-weight:700;color:{m["color"]};margin-bottom:6px;">'
@@ -4185,8 +4185,14 @@ def render_home_page():
                     f'</div>',
                     unsafe_allow_html=True
                 )
-                st.page_link(f"pages/{m['url']}.py" if False else m["url"],
-                    label="进入 →" if is_zh else "Enter →")
+                # Use a simple HTML link to navigate (Streamlit multi-page with url_path)
+                st.markdown(
+                    f'<a href="/{m["url"]}" target="_self" style="text-decoration:none;">'
+                    f'<div style="text-align:center;padding:6px;margin-top:2px;'
+                    f'color:{m["color"]};font-size:0.8rem;font-weight:600;">'
+                    f'{"进入 →" if is_zh else "Enter →"}</div></a>',
+                    unsafe_allow_html=True
+                )
     
     st.markdown("---")
     
@@ -4226,7 +4232,14 @@ def render_home_page():
     btn_cols = st.columns(len(quick_links))
     for i, (label, url) in enumerate(quick_links):
         with btn_cols[i]:
-            st.page_link(url, label=label)
+            st.markdown(
+                f'<a href="/{url}" target="_self" style="text-decoration:none;">'
+                f'<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);'
+                f'border-radius:12px;padding:12px 8px;text-align:center;">'
+                f'<span style="font-size:0.82rem;color:rgba(255,255,255,0.8);">{label}</span>'
+                f'</div></a>',
+                unsafe_allow_html=True
+            )
     
     st.markdown("---")
     
@@ -4237,6 +4250,8 @@ def render_home_page():
         '</div>',
         unsafe_allow_html=True
     )
+
+
 
 
 
