@@ -1466,7 +1466,7 @@ def render_validation_page():
 
     styled_df = df.style.map(color_dev, subset=[t["validate_col_dev"]])
     st.dataframe(styled_df, width="stretch", height=500)
-    st.caption("绿色<5% | 橙色5-20% | 红色>20%（Cp在近临界区偏差可达30-50%，属PR方程理论局限）" if is_zh else "Green <5% | Orange 5-20% | Red >20% (Cp near critical point may deviate 30-50%, PR EOS theoretical limit)")
+    st.caption("🟢 <5%  🟠 5-20%  🔴 >20%" if is_zh else "🟢 <5%  🟠 5-20%  🔴 >20%")
 
 
 
