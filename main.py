@@ -15,11 +15,7 @@ from plotly.subplots import make_subplots
 from scipy.optimize import newton
 from typing import Tuple, Dict, Optional, List
 import traceback
-import joblib
 import os
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score
 
 # ============================================================================
 # 0. 全局常量
@@ -1773,6 +1769,11 @@ def _build_training_dataset():
 @st.cache_resource
 def _train_ai_models():
     """Train RandomForest models. Cached with @st.cache_resource."""
+    import joblib
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import r2_score
+    
     X, y_dens, y_cp_arr = _build_training_dataset()
     
     # Split: 80% train, 20% test
@@ -1844,6 +1845,13 @@ def render_ai_prediction():
                 model_info = _train_ai_models()
                 st.session_state["ai_model"] = model_info
                 st.session_state["ai_trained"] = True
+            except ImportError as e:
+                st.error(
+                    "AI模块需要scikit-learn和joblib。请运行: pip install scikit-learn joblib"
+                    if is_zh else
+                    "AI module requires scikit-learn and joblib. Run: pip install scikit-learn joblib"
+                )
+                st.session_state["ai_trained"] = False
             except Exception as e:
                 st.error(f"训练失败: {e}" if is_zh else f"Training failed: {e}")
                 st.session_state["ai_trained"] = False
