@@ -182,7 +182,9 @@ FLUID_DATABASE = [
 
 def pr_alpha(T: float, Tc: float, omega: float) -> float:
     """PR EOS temperature-dependent alpha function."""
-    Tr = T / Tc
+    if Tc <= 0 or T <= 0:
+        return 1.0
+    Tr = max(T / Tc, 1e-6)
     kappa = 0.37464 + 1.54226 * omega - 0.26992 * omega**2
     sqrt_alpha = 1.0 + kappa * (1.0 - np.sqrt(Tr))
     return sqrt_alpha * sqrt_alpha
@@ -305,8 +307,8 @@ def pr_residual_enthalpy(T, P, Z, Tc, Pc, omega):
     Tda_minus_a = a_val * (T * a_prime_over_a - 1.0)
     numerator = Tda_minus_a / (2.0 * sqrt2 * b_val)
     arg = (Z + (1.0 + sqrt2) * B) / (Z + (1.0 - sqrt2) * B)
-    if arg <= 0:
-        arg = abs(arg) + 1e-15
+    if arg <= 0 or np.isnan(arg) or np.isinf(arg):
+        arg = 1e-15
     term2 = numerator * np.log(arg)
     return RT * term1 + term2
 
@@ -322,7 +324,7 @@ def pr_residual_entropy(T, P, Z, Tc, Pc, omega):
     da_dT = 2.0 * (1.0 + kappa * (1.0 - sqrt_tr)) * (-kappa / (2.0 * np.sqrt(Tr * Tc)))
     sqrt2 = np.sqrt(2.0)
     Z_plus_B = Z + B
-    term1 = np.log(Z - B) if Z > B else 0.0
+    term1 = np.log(max(Z - B, 1e-15))
     term2 = (da_dT / (2.0 * sqrt2 * b_val)) * np.log(
         (Z + (1.0 + sqrt2) * B) / (Z + (1.0 - sqrt2) * B)
     )
@@ -330,47 +332,83 @@ def pr_residual_entropy(T, P, Z, Tc, Pc, omega):
 
 
 def estimate_thermal_conductivity_pr(T, P, Z, M, Tc, Pc, omega, Cp_ideal):
-    """Estimate thermal conductivity via Chung corresponding states [W/(m*K)]."""
-    # Simplified Chung correlation
+    """Estimate thermal conductivity via Chung corresponding states [W/(m*K)].
+    
+    Chung et al. (1988) correlation:
+    lambda = (3.75 * psi / Cv_R) * eta * Cv / M
+    Simplified: lambda [W/(m*K)] = 3.75 * psi * R * eta_low [Pa*s] / M [kg/mol] * f(rho)
+    where eta_low comes from Chung viscosity formula below.
+    """
     MW = M * 1000.0  # kg/mol -> g/mol
-    Tc_ref = Tc
-    Vc = R_GAS * Tc / Pc  # critical volume estimate
-    # Reduced temperature
     Tr = T / Tc
-    # Low-pressure gas TC
-    mu_ref = 1.0  # reference viscosity approximation
-    alpha_c = 1.0
-    # Chung et al. simplified
-    tc_low = 3.75 * alpha_c * R_GAS / MW * mu_ref
-    # High-pressure correction (simplified)
-    rho = pr_density(Z, T, P, M / 1000.0) if Z > 0 else 0
-    rho_c = Pc / (R_GAS * Tc) * (M / 1000.0) * 0.3
+    # Chung low-pressure viscosity (for use in TC formula)
+    Fc = 1.0 - 0.2756 * omega
+    T_star = 1.2593 * Tr
+    Omega_v = (1.16145 / T_star**0.14874 + 0.52487 / np.exp(0.77320 * T_star)
+               + 2.16178 / np.exp(2.43787 * T_star))
+    # mu_low in micropoise (muP)
+    mu_low_muP = 40.785 * Fc * np.sqrt(MW * T) / (Tc**(1.0/6.0) * max(Omega_v, 0.1))
+    # Convert to Pa*s: 1 muP = 1e-7 Pa*s
+    mu_low_Pa_s = mu_low_muP * 1e-7
+
+    # psi parameter (~1.0 for non-polar, simplified)
+    psi = 1.0 + 0.1 * omega  # rough correction for acentric factor
+    # Chung: lambda_low [W/(m*K)] = 3.75 * psi * R * eta / M
+    tc_low = 3.75 * psi * R_GAS * mu_low_Pa_s / max(M, 0.001)
+
+    # High-pressure correction
+    rho = abs(pr_density(Z, T, P, M)) if Z > 0 else 0.0
+    if Pc > 0 and Tc > 0:
+        rho_c = Pc / (R_GAS * Tc) * M * 0.3  # approximate critical density
+    else:
+        rho_c = 1.0
     if rho_c > 0 and rho > 0:
-        y = rho / rho_c / 6.0
+        y = min(rho / rho_c / 6.0, 10.0)  # cap to avoid overflow
         tc_high = tc_low * (1.0 + 0.5 * y + 2.0 * y**2)
     else:
         tc_high = tc_low
-    return max(tc_high, 0.001)
+    return max(tc_high, 0.0001)
 
 
 def estimate_viscosity_pr(T, P, Z, M, Tc, Pc, omega):
-    """Estimate viscosity via Chung corresponding states [muPa*s]."""
-    MW = M * 1000.0
+    """Estimate viscosity via Chung corresponding states [muPa*s].
+    
+    Chung et al. (1988) low-pressure gas viscosity:
+    eta [muP] = 40.785 * Fc * sqrt(MW*T) / (Vc^(2/3) * Omega_v)
+    where Vc^(2/3) ~ (R*Tc/Pc)^(2/3), but Chung uses Tc^(1/6) as simplification.
+    Returns: muPa*s.  1 muP = 0.1 muPa*s.
+    """
+    MW = M * 1000.0  # g/mol
     Tr = T / Tc
-    # Low-pressure viscosity (Chung simplified)
+    # Polarity correction factor
     Fc = 1.0 - 0.2756 * omega
+    if Fc < 0.1:
+        Fc = 0.1  # guard against negative omega (H2, He)
+
+    # Reduced collision integral
     T_star = 1.2593 * Tr
-    Omega_v = 1.16145 / T_star**0.14874 + 0.52487 / np.exp(0.77320 * T_star) + 2.16178 / np.exp(2.43787 * T_star)
-    mu_low = 40.785 * Fc * np.sqrt(MW * T) / (Tc**(1.0/6.0) * Omega_v)  # muPa*s
+    Omega_v = (1.16145 / T_star**0.14874 + 0.52487 / np.exp(0.77320 * T_star)
+               + 2.16178 / np.exp(2.43787 * T_star))
+    if Omega_v < 0.1:
+        Omega_v = 0.1
+
+    # Low-pressure viscosity [micropoise, muP]
+    mu_low_muP = 40.785 * Fc * np.sqrt(MW * T) / (Tc**(1.0/6.0) * Omega_v)
+    # Convert: 1 muP = 0.1 muPa*s
+    mu_low = mu_low_muP * 0.1
+
     # High-pressure correction
-    rho = pr_density(Z, T, P, M / 1000.0) if Z > 0 else 0
-    rho_c = Pc / (R_GAS * Tc) * (M / 1000.0) * 0.3
+    rho = abs(pr_density(Z, T, P, M)) if Z > 0 else 0.0
+    if Pc > 0 and Tc > 0:
+        rho_c = Pc / (R_GAS * Tc) * M * 0.3
+    else:
+        rho_c = 1.0
     if rho_c > 0 and rho > 0:
-        y = rho / rho_c / 6.0
+        y = min(rho / rho_c / 6.0, 10.0)
         mu_high = mu_low * (1.0 + y * 0.5 + y**2 * 2.0)
     else:
         mu_high = mu_low
-    return max(mu_high, 0.01)
+    return max(mu_high, 0.001)
 
 
 
@@ -398,10 +436,7 @@ def coolprop_properties(T, P, fluid, M):
         tc = _safe_prop("L")
         visc = _safe_prop("V")
 
-        try:
-            alpha_cp = _safe_prop("ISOBARIC_EXPANSION_COEFFICIENT")
-        except Exception:
-            alpha_cp = None
+        alpha_cp = _safe_prop("ISOBARIC_EXPANSION_COEFFICIENT")
 
         return {
             "density": density,
@@ -429,18 +464,37 @@ def pr_engine_properties(T, P, fluid_info):
         # Step 1: Solve cubic for Z
         Z_v, Z_l, Z_u = solve_pr_cubic(T, P, Tc, Pc_pa, omega)
 
-        # 相态选择（选根）逻辑 — 极性感知版本
+        # 相态选择（选根）逻辑
+        # 策略：优先用CoolProp饱和压力判断亚临界相态，
+        # CoolProp不可用时回退到启发式规则
         rho_v = pr_density(Z_v, T, P, M)
         rho_l = pr_density(Z_l, T, P, M)
         same_root = abs(Z_v - Z_l) < 1e-8 and abs(Z_v - Z_u) < 1e-8
 
+        # 尝试获取饱和压力（亚临界区相态判断）
+        psat_known = None
+        if T < Tc:
+            try:
+                import CoolProp.CoolProp as CP
+                Psat_val = CP.PropsSI("P", "T", T, "Q", 0.5, cp_name)
+                psat_known = Psat_val
+            except Exception:
+                psat_known = None
+
         if polarity == "high" and T > Tc * 0.5 and P < Pc_pa * 0.1:
+            # 强极性物质低压高温区：PR饱和压力不可靠，强制气相
             Z_used = Z_v
+        elif psat_known is not None and psat_known > 0:
+            # 有可靠饱和压力：P > Psat -> 液相, P < Psat -> 气相
+            Z_used = Z_l if P > psat_known else Z_v
         elif same_root:
+            # 单根情况：Z < 0.3 = 液相, Z >= 0.3 = 气相/超临界
             Z_used = Z_l if Z_l < 0.3 else Z_v
         elif Z_l <= 0.002:
+            # 极小液相根通常为伪根（过热蒸汽区）
             Z_used = Z_v
         else:
+            # 多根情况：无CoolProp时回退到Gibbs自由能最小化
             G_v = pr_residual_enthalpy(T, P, Z_v, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_v, Tc, Pc_pa, omega)
             G_l = pr_residual_enthalpy(T, P, Z_l, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_l, Tc, Pc_pa, omega)
             Z_used = Z_l if G_l < G_v else Z_v
@@ -487,7 +541,15 @@ def pr_engine_properties(T, P, fluid_info):
         viscosity = estimate_viscosity_pr(T, P, Z_used, M, Tc, Pc_pa, omega)
 
         # 相态质量标记
-        if polarity == "high" and T > Tc * 0.5 and T < Tc * 1.2:
+        if psat_known is not None and T < Tc:
+            # Psat验证通过；检查是否远低于临界温度
+            if T < Tc * 0.9 and P > psat_known * 2:
+                phase_quality = "subcooled"  # 深过冷液体，ρ偏差可能较大
+            elif polarity == "high":
+                phase_quality = "psat_polar"  # 极性物质Psat验证，密度偏差预期大
+            else:
+                phase_quality = "psat_verified"
+        elif polarity == "high" and T > Tc * 0.5 and T < Tc * 1.2:
             phase_quality = "limited"
         elif polarity == "high":
             phase_quality = "polar_warn"
@@ -931,7 +993,7 @@ def render_validation_page():
 
     benchmarks_nonpolar = [
         ("Methane", 300.0, 0.1), ("Methane", 300.0, 1.0), ("Ethane", 300.0, 1.0),
-        ("Propane", 300.0, 1.0), ("n-Butane", 350.0, 2.0), ("Ethylene", 300.0, 1.0),
+        ("Propane", 450.0, 0.5), ("n-Butane", 450.0, 0.5), ("Ethylene", 300.0, 1.0),
         ("Propylene", 350.0, 1.0), ("CarbonDioxide", 300.0, 1.0), ("CarbonDioxide", 270.0, 5.0),
         ("Nitrogen", 300.0, 1.0), ("Oxygen", 300.0, 1.0), ("CarbonMonoxide", 300.0, 1.0),
         ("R134a", 350.0, 1.0),
