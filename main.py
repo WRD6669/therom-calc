@@ -4114,7 +4114,7 @@ def render_home_page():
     """首页总览页面 — 面向新材料研发的热物性计算优化软件。"""
     is_zh = st.session_state.get("lang", "zh") == "zh"
     
-    # ── Hero 区域 ──
+    # ── Hero ──
     st.markdown(
         '<div style="text-align:center;padding:40px 0 10px 0;">'
         '<h1 style="font-size:2.4rem;font-weight:800;letter-spacing:-1px;'
@@ -4128,122 +4128,73 @@ def render_home_page():
         '</p>'
         '<p style="font-size:0.82rem;color:rgba(255,255,255,0.35);margin-top:4px;">'
         + ("基于物理模型 + AI增强的复合材料热物性预测与优化设计平台" if is_zh else "Physics-model + AI-enhanced composite thermal property prediction & optimization platform") +
-        '</p>'
-        '</div>',
+        '</p></div>',
         unsafe_allow_html=True
     )
     
     st.markdown("---")
     
-    # ── 核心功能概览（6卡片）──
+    # ── 核心功能卡片 ──
     st.subheader("⚡ 核心功能" if is_zh else "⚡ Core Modules")
     
     modules = [
-        {"icon": "🧪", "title_zh": "基础物性计算", "title_en": "Base Properties",
-         "desc_zh": "20+种纯流体，PR状态方程+RandomForest AI偏差补偿",
-         "desc_en": "20+ pure fluids, PR EOS + RandomForest AI bias compensation",
-         "color": "#7c3aed", "url": "calc"},
-        {"icon": "🔬", "title_zh": "模型验证", "title_en": "Validation",
-         "desc_zh": "与CoolProp工业基准对标，A/B/C/D四级精度评级",
-         "desc_en": "Benchmarked against CoolProp, A/B/C/D accuracy grading",
-         "color": "#06b6d4", "url": "validate"},
-        {"icon": "🧠", "title_zh": "智能筛选", "title_en": "Smart Screening",
-         "desc_zh": "目标匹配推荐 + 批量精度扫描 + 反向求解",
-         "desc_en": "Target matching + batch accuracy scan + inverse solver",
-         "color": "#10b981", "url": "optimize"},
-        {"icon": "🤖", "title_zh": "AI偏差补偿", "title_en": "AI Compensation",
-         "desc_zh": "RandomForest模型，13,905条训练数据，修正PR方程系统性偏差",
-         "desc_en": "RandomForest with 13,905 samples, corrects PR EOS systematic bias",
-         "color": "#f59e0b", "url": "ai"},
-        {"icon": "🧩", "title_zh": "复合材料预测", "title_en": "Composite Prediction",
-         "desc_zh": "Hashin-Shtrikman / Maxwell-Eucken混合模型 + AI增强",
-         "desc_en": "Hashin-Shtrikman / Maxwell-Eucken mixing models + AI enhancement",
-         "color": "#ec4899", "url": "composite"},
-        {"icon": "🎯", "title_zh": "优化设计", "title_en": "Optimization",
-         "desc_zh": "目标导向的配方智能优化，多方案对比推荐",
-         "desc_en": "Target-driven formula optimization with multi-plan comparison",
-         "color": "#f97316", "url": "optimize_design"},
+        ("🧪", "基础物性计算" if is_zh else "Base Properties",
+         "20+种纯流体，PR方程+AI偏差补偿" if is_zh else "20+ fluids, PR EOS + AI compensation",
+         "#7c3aed"),
+        ("🔬", "模型验证" if is_zh else "Validation",
+         "CoolProp基准对标，A/B/C/D精度评级" if is_zh else "CoolProp benchmark, A/B/C/D grading",
+         "#06b6d4"),
+        ("🧠", "智能筛选" if is_zh else "Smart Screening",
+         "目标匹配 + 批量扫描 + 反向求解" if is_zh else "Target matching + batch scan + inverse solver",
+         "#10b981"),
+        ("🤖", "AI偏差补偿" if is_zh else "AI Compensation",
+         "RandomForest，13,905条数据，修正PR偏差" if is_zh else "RandomForest with 13,905 samples",
+         "#f59e0b"),
+        ("🧩", "复合材料预测" if is_zh else "Composite Prediction",
+         "Hashin-Shtrikman/Maxwell-Eucken + AI增强" if is_zh else "HS/ME mixing models + AI",
+         "#ec4899"),
+        ("🎯", "优化设计" if is_zh else "Optimization",
+         "目标导向配方优化，多方案对比" if is_zh else "Target-driven formula optimization",
+         "#f97316"),
     ]
     
-    for row_start in [0, 3]:
+    for row in [0, 3]:
         cols = st.columns(3)
         for i in range(3):
-            idx = row_start + i
-            if idx >= len(modules): break
-            m = modules[idx]
+            if row + i >= len(modules): break
+            icon, title, desc, color = modules[row + i]
             with cols[i]:
-                # Simple styled card + st.link_button for navigation
                 st.markdown(
                     f'<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);'
-                    f'border-radius:16px;padding:22px 18px 12px 18px;'
-                    f'border-top:3px solid {m["color"]};">'
-                    f'<div style="font-size:2rem;margin-bottom:10px;">{m["icon"]}</div>'
-                    f'<div style="font-size:1rem;font-weight:700;color:{m["color"]};margin-bottom:6px;">'
-                    f'{m["title_zh"] if is_zh else m["title_en"]}</div>'
-                    f'<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.4;">'
-                    f'{m["desc_zh"] if is_zh else m["desc_en"]}</div>'
+                    f'border-radius:16px;padding:22px 18px;height:140px;border-top:3px solid {color};">'
+                    f'<div style="font-size:2rem;margin-bottom:8px;">{icon}</div>'
+                    f'<div style="font-size:0.95rem;font-weight:700;color:{color};margin-bottom:4px;">{title}</div>'
+                    f'<div style="font-size:0.75rem;color:rgba(255,255,255,0.4);line-height:1.3;">{desc}</div>'
                     f'</div>',
-                    unsafe_allow_html=True
-                )
-                # Use a simple HTML link to navigate (Streamlit multi-page with url_path)
-                st.markdown(
-                    f'<a href="/{m["url"]}" target="_self" style="text-decoration:none;">'
-                    f'<div style="text-align:center;padding:6px;margin-top:2px;'
-                    f'color:{m["color"]};font-size:0.8rem;font-weight:600;">'
-                    f'{"进入 →" if is_zh else "Enter →"}</div></a>',
                     unsafe_allow_html=True
                 )
     
     st.markdown("---")
     
-    # ── 技术指标（4统计卡片）──
+    # ── 技术指标 ──
     st.subheader("📊 技术指标" if is_zh else "📊 Highlights")
     c1, c2, c3, c4 = st.columns(4)
-    stats = [
+    for col, (num, label, color) in zip([c1, c2, c3, c4], [
         ("13,905", "训练数据条数" if is_zh else "Training Samples", "#c4b5fd"),
         ("25+", "覆盖物质种类" if is_zh else "Fluids Covered", "#67e8f9"),
         ("0.95", "AI Cp预测 R²" if is_zh else "AI Cp R²", "#6ee7b7"),
         ("100%", "两相区检测准确率" if is_zh else "Two-Phase Detection", "#fbbf24"),
-    ]
-    for col, (num, label, color) in zip([c1, c2, c3, c4], stats):
+    ]):
         with col:
             st.markdown(
                 f'<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);'
                 f'border-radius:14px;padding:20px;text-align:center;">'
                 f'<div style="font-size:2rem;font-weight:800;color:{color};">{num}</div>'
-                f'<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);">{label}</div>'
-                f'</div>',
+                f'<div style="font-size:0.78rem;color:rgba(255,255,255,0.45);">{label}</div></div>',
                 unsafe_allow_html=True
             )
     
     st.markdown("---")
-    
-    # ── 快速入口按钮 ──
-    st.subheader("🚀 快速入口" if is_zh else "🚀 Quick Access")
-    
-    quick_links = [
-        ("🧪 " + ("基础物性计算" if is_zh else "Calculate Properties"), "calc"),
-        ("🤖 " + ("AI偏差补偿" if is_zh else "AI Compensation"), "ai"),
-        ("🧩 " + ("复合材料预测" if is_zh else "Composite Prediction"), "composite"),
-        ("🎯 " + ("优化设计" if is_zh else "Optimization"), "optimize_design"),
-        ("📚 " + ("材料数据库" if is_zh else "Materials Database"), "materials_db"),
-    ]
-    
-    btn_cols = st.columns(len(quick_links))
-    for i, (label, url) in enumerate(quick_links):
-        with btn_cols[i]:
-            st.markdown(
-                f'<a href="/{url}" target="_self" style="text-decoration:none;">'
-                f'<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);'
-                f'border-radius:12px;padding:12px 8px;text-align:center;">'
-                f'<span style="font-size:0.82rem;color:rgba(255,255,255,0.8);">{label}</span>'
-                f'</div></a>',
-                unsafe_allow_html=True
-            )
-    
-    st.markdown("---")
-    
-    # ── 底部 ──
     st.markdown(
         '<div style="text-align:center;color:rgba(255,255,255,0.2);font-size:0.7rem;padding:20px 0;">'
         + ("ThermoCalc v2.0 | Peng-Robinson EOS + CoolProp + RandomForest | 化工软件开发比赛" if is_zh else "ThermoCalc v2.0 | Peng-Robinson EOS + CoolProp + RandomForest | Chemical Engineering Software Competition") +
