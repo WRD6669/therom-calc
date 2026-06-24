@@ -15,6 +15,7 @@ from plotly.subplots import make_subplots
 from scipy.optimize import newton
 from typing import Tuple, Dict, Optional, List
 import traceback
+import re
 
 # ============================================================================
 # 0. 全局常量
@@ -42,9 +43,12 @@ LANG = {
         "deviation": "📉 偏差 (%)",
         "density": "密度",
         "cp": "定压比热容 Cp",
-        "cv": "定容比热容 Cv",
-        "thermal_cond": "导热系数 λ",
+        "cv": "定容比热容 Cv",        "thermal_cond": "导热系数 λ",
         "viscosity": "动力粘度 μ",
+        "tc_note": "??????????Chung???????10-20%???????????????",
+        "mu_note": "??????????Chung???????10-20%???????????????",
+        "thermal_expansion": "????? ?",
+        "unit_alpha": "1/K",
         "unit_density": "kg/m³",
         "unit_cp": "kJ/(kg·K)",
         "unit_tc": "W/(m·K)",
@@ -56,7 +60,14 @@ LANG = {
         "warn_pr_fail": "⚠️ PR方程计算失败: {}",
         "warn_range": "⚠️ 输入温度/压力超出该物质推荐范围, 结果可能不准确。",
         "error_no_fluid": "请选择物质。",
+        "calc_failed": "计算失败",
         "calc_ok": "✅ 计算成功完成！",
+        "phase_label": "当前状态",
+        "phase_vapor": "气相",
+        "phase_liquid": "液相",
+        "phase_supercritical": "超临界流体",
+        "phase_two_phase": "两相区",
+        "warn_two_phase": "⚠️ 当前工况处于两相区，PR方程精度有限，建议参考CoolProp基准值。",
         "about_title": "ℹ️ 关于本软件",
         "about_text": "**热物性计算软件** v2.0 为化工软件开发比赛设计。<br><br>**核心特色:**<br>- 🔩 **自研Peng-Robinson方程引擎**: 手写PR三次方程求解、剩余性质计算、对应态原理粘度/导热系数估算<br>- 📎 **CoolProp基准引擎**: 调用工业级物性数据库作为高精度对照<br>- 📈 **Plotly交互图表**: 悬停数值、缩放拖拽、双曲线叠加对比<br>- 🌐 **中英双语界面**: 一键切换<br><br>**适用范围:** 气相、液相、超临界态流体热物性估算",
         "first_time_msg": "⏳ 请在左侧输入参数并点击「开始计算」",
@@ -79,6 +90,24 @@ LANG = {
         "meta_page": "页面",
         "meta_main_page": "🏠 物性计算",
         "meta_verify_page": "🔬 模型验证",
+        "mode_label": "模式",
+        "mode_calc": "物性计算",
+        "mode_screening": "材料筛选",
+        "screening_title": "🔍 材料筛选器",
+        "screening_desc": "遍历所有20种物质，按指定条件筛选最优材料",
+        "screening_target_prop": "目标物性",
+        "screening_condition": "筛选条件",
+        "screening_threshold": "阈值",
+        "screening_btn": "🔍 开始筛选",
+        "screening_col_fluid": "物质",
+        "screening_col_value": "物性值",
+        "screening_col_meet": "是否满足",
+        "screening_meet": "✓",
+        "screening_not_meet": "✗",
+        "screening_no_results": "没有物质满足筛选条件，请调整参数。",
+        "screening_results_count": "共 {} 种物质满足条件",
+        "screening_error": "筛选计算出错: {}",
+
     },
     "en": {
         "title": "🧪 Thermodynamic Property Calculator",
@@ -97,9 +126,12 @@ LANG = {
         "deviation": "📉 Deviation (%)",
         "density": "Density",
         "cp": "Specific Heat Cp",
-        "cv": "Specific Heat Cv",
-        "thermal_cond": "Thermal Conductivity λ",
+        "cv": "Specific Heat Cv",        "thermal_cond": "Thermal Conductivity λ",
         "viscosity": "Viscosity μ",
+        "tc_note": "Estimated via corresponding states principle (Chung method), typical deviation 10-20%, suitable for trend comparison during material screening",
+        "mu_note": "Estimated via corresponding states principle (Chung method), typical deviation 10-20%, suitable for trend comparison during material screening",
+        "thermal_expansion": "Thermal Expansion ?",
+        "unit_alpha": "1/K",
         "unit_density": "kg/m³",
         "unit_cp": "kJ/(kg·K)",
         "unit_tc": "W/(m·K)",
@@ -111,7 +143,14 @@ LANG = {
         "warn_pr_fail": "⚠️ PR EOS calculation failed: {}",
         "warn_range": "⚠️ Input T/P may be out of recommended range for this fluid.",
         "error_no_fluid": "Please select a fluid.",
-        "calc_ok": "✅ Calculation completed successfully!",
+        "calc_failed": "Calculation failed",
+        "calc_ok": "Calculation completed!",
+        "phase_label": "Current State",
+        "phase_vapor": "Vapor",
+        "phase_liquid": "Liquid",
+        "phase_supercritical": "Supercritical Fluid",
+        "phase_two_phase": "Two-phase",
+        "warn_two_phase": "Currently in two-phase region. PR accuracy limited.",
         "about_title": "ℹ️ About",
         "about_text": "**Thermodynamic Property Calculator** v2.0 - Built for chemical engineering software competition.<br><br>**Key Features:**<br>- 🔩 **Self-developed PR EOS Engine**: Handwritten cubic equation solver, residual properties, corresponding-state transport properties<br>- 📎 **CoolProp Benchmark Engine**: Industrial-grade thermodynamic database as reference<br>- 📈 **Plotly Interactive Charts**: Hover values, zoom/pan, dual-curve overlay comparison<br>- 🌐 **Bilingual Interface**: One-click Chinese/English switch<br><br>**Scope:** Gas, liquid, and supercritical fluid property estimation",
         "first_time_msg": "⏳ Enter parameters in the sidebar and click Calculate",
@@ -134,30 +173,48 @@ LANG = {
         "meta_page": "Page",
         "meta_main_page": "🏠 Property Calc",
         "meta_verify_page": "🔬 Model Validation",
+        "mode_label": "Mode",
+        "mode_calc": "Property Calc",
+        "mode_screening": "Material Screening",
+        "screening_title": "🔍 Material Screening",
+        "screening_desc": "Scan all 20 substances and filter by specified criteria",
+        "screening_target_prop": "Target Property",
+        "screening_condition": "Condition",
+        "screening_threshold": "Threshold",
+        "screening_btn": "🔍 Start Screening",
+        "screening_col_fluid": "Substance",
+        "screening_col_value": "Property Value",
+        "screening_col_meet": "Meets Condition",
+        "screening_meet": "✓",
+        "screening_not_meet": "✗",
+        "screening_no_results": "No substances match the screening criteria. Please adjust parameters.",
+        "screening_results_count": "{} substances meet the criteria",
+        "screening_error": "Screening error: {}",
+
     },
 }
 
 FLUID_DATABASE = [
-    ("甲烷",   "Methane",    16.043,  190.56, 4.599, 0.011,   [19.25, 0.05213, 1.197e-5, -1.132e-8], "Methane"),
-    ("乙烷",   "Ethane",     30.070,  305.32, 4.872, 0.099,   [ 5.41, 0.17809, -6.938e-5, 8.713e-9], "Ethane"),
-    ("丙烷",   "Propane",    44.096,  369.83, 4.248, 0.152,   [-4.22, 0.30630, -1.586e-4, 3.215e-8], "Propane"),
-    ("正丁烷", "n-Butane",   58.122,  425.12, 3.796, 0.200,   [ 9.49, 0.33130, -1.108e-4, -2.822e-9], "n-Butane"),
-    ("正戊烷", "n-Pentane",  72.149,  469.70, 3.370, 0.251,   [-3.63, 0.48730, -2.580e-4, 5.305e-8], "n-Pentane"),
-    ("乙烯",   "Ethylene",   28.054,  282.34, 5.041, 0.086,   [ 3.81, 0.15660, -8.348e-5, 1.755e-8], "Ethylene"),
-    ("丙烯",   "Propylene",  42.080,  364.90, 4.600, 0.144,   [ 3.71, 0.23450, -1.160e-4, 2.205e-8], "Propylene"),
-    ("苯",     "Benzene",    78.112,  562.05, 4.895, 0.210,   [-33.90, 0.56390, -4.133e-4, 1.202e-7], "Benzene"),
-    ("甲苯",   "Toluene",    92.138,  591.75, 4.108, 0.264,   [-24.36, 0.51250, -2.765e-4, 4.911e-8], "Toluene"),
-    ("甲醇",   "Methanol",   32.042,  512.64, 8.097, 0.565,   [ 21.15, 0.07092, 2.587e-5, -2.852e-8], "Methanol"),
-    ("乙醇",   "Ethanol",    46.068,  513.90, 6.148, 0.643,   [ 9.38, 0.30928, -1.706e-4, 3.787e-8], "Ethanol"),
-    ("水",     "Water",      18.015,  647.10, 22.064, 0.344,   [ 32.24, 0.00192, 1.055e-5, -3.596e-9], "Water"),
-    ("氨",     "Ammonia",    17.031,  405.40, 11.333, 0.256,   [ 27.32, 0.02383, 1.707e-5, -1.185e-8], "Ammonia"),
-    ("二氧化碳","CO2",       44.010,  304.13, 7.377, 0.225,   [ 19.80, 0.07344, -5.602e-5, 1.715e-8], "CarbonDioxide"),
-    ("一氧化碳","CO",        28.010,  132.86, 3.494, 0.048,   [ 30.87, -0.01285, 2.789e-5, -1.272e-8], "CarbonMonoxide"),
-    ("氮气",   "Nitrogen",   28.013,  126.19, 3.396, 0.037,   [ 31.15, -0.01357, 2.680e-5, -1.168e-8], "Nitrogen"),
-    ("氧气",   "Oxygen",     31.999,  154.58, 5.043, 0.021,   [ 28.11, -0.00368, 1.746e-5, -1.065e-8], "Oxygen"),
-    ("氢气",   "Hydrogen",    2.016,   33.15, 1.296,-0.216,   [ 27.14,  0.00927, -1.381e-5, 7.645e-9], "Hydrogen"),
-    ("氦气",   "Helium",      4.003,    5.20, 0.227,-0.390,   [ 20.79,  0.0,      0.0,       0.0     ], "Helium"),
-    ("R134a",  "R134a",     102.030,  374.21, 4.059, 0.327,   [ 16.34, 0.26850, -1.457e-4, 2.492e-8], "R134a"),
+    ("甲烷", "Methane",    90.7,   16.043,  190.56,  4.599,  0.011, [19.25, 0.05213, 1.197e-05, -1.132e-08]      , "Methane"),
+    ("乙烷", "Ethane",    90.4,   30.070,  305.32,  4.872,  0.099, [5.41, 0.17809, -6.938e-05, 8.713e-09]       , "Ethane"),
+    ("丙烷", "Propane",    85.5,   44.096,  369.83,  4.248,  0.152, [-4.22, 0.3063, -0.0001586, 3.215e-08]       , "Propane"),
+    ("正丁烷", "n-Butane",   134.9,   58.122,  425.12,  3.796,  0.200, [9.49, 0.3313, -0.0001108, -2.822e-09]       , "n-Butane"),
+    ("正戊烷", "n-Pentane",   143.5,   72.149,  469.70,  3.370,  0.251, [-3.63, 0.4873, -0.000258, 5.305e-08]        , "n-Pentane"),
+    ("乙烯", "Ethylene",   104.0,   28.054,  282.34,  5.041,  0.086, [3.81, 0.1566, -8.348e-05, 1.755e-08]        , "Ethylene"),
+    ("丙烯", "Propylene",    87.9,   42.080,  364.90,  4.600,  0.144, [3.71, 0.2345, -0.000116, 2.205e-08]         , "Propylene"),
+    ("苯", "Benzene",   278.7,   78.112,  562.05,  4.895,  0.210, [-33.9, 0.5639, -0.0004133, 1.202e-07]       , "Benzene"),
+    ("甲苯", "Toluene",   178.2,   92.138,  591.75,  4.108,  0.264, [-24.36, 0.5125, -0.0002765, 4.911e-08]      , "Toluene"),
+    ("甲醇", "Methanol",   175.5,   32.042,  512.64,  8.097,  0.565, [21.15, 0.07092, 2.587e-05, -2.852e-08]      , "Methanol"),
+    ("乙醇", "Ethanol",   159.1,   46.068,  513.90,  6.148,  0.643, [9.38, 0.30928, -0.0001706, 3.787e-08]       , "Ethanol"),
+    ("水", "Water",   273.2,   18.015,  647.10, 22.064,  0.344, [32.24, 0.00192, 1.055e-05, -3.596e-09]      , "Water"),
+    ("氨", "Ammonia",   195.4,   17.031,  405.40, 11.333,  0.256, [27.32, 0.02383, 1.707e-05, -1.185e-08]      , "Ammonia"),
+    ("二氧化碳", "CO2",   216.6,   44.010,  304.13,  7.377,  0.225, [19.8, 0.07344, -5.602e-05, 1.715e-08]       , "CarbonDioxide"),
+    ("一氧化碳", "CO",    68.1,   28.010,  132.86,  3.494,  0.048, [30.87, -0.01285, 2.789e-05, -1.272e-08]     , "CarbonMonoxide"),
+    ("氮气", "Nitrogen",    63.2,   28.013,  126.19,  3.396,  0.037, [31.15, -0.01357, 2.68e-05, -1.168e-08]      , "Nitrogen"),
+    ("氧气", "Oxygen",    54.4,   31.999,  154.58,  5.043,  0.021, [28.11, -0.00368, 1.746e-05, -1.065e-08]     , "Oxygen"),
+    ("氢气", "Hydrogen",    14.0,    2.016,   33.15,  1.296, -0.216, [27.14, 0.00927, -1.381e-05, 7.645e-09]      , "Hydrogen"),
+    ("氦气", "Helium",     2.2,    4.003,    5.20,  0.227, -0.390, [20.79, 0.0, 0.0, 0.0]                       , "Helium"),
+    ("R134a", "R134a",   170.0,  102.030,  374.21,  4.059,  0.327, [16.34, 0.2685, -0.0001457, 2.492e-08]       , "R134a"),
 ]
 
 
@@ -208,7 +265,7 @@ def fp_pr_cubic(Z, c1, c2, c3):
 
 def solve_pr_cubic(T, P, Tc, Pc, omega):
     """Solve PR cubic for compressibility factor Z.
-    Returns (Z_vapor, Z_liquid, Z_unstable).
+    Returns (Z_small, Z_mid, Z_large) — three real roots sorted ascending.
     Uses Cardano analytical solution + Newton refinement.
     """
     import cmath
@@ -269,7 +326,13 @@ def solve_pr_cubic(T, P, Tc, Pc, omega):
     while len(refined) < 3:
         refined.append(refined[-1] if refined else 0.3)
 
-    return float(refined[0]), float(refined[1]), float(refined[2])
+    # Return roots sorted ascending (smallest first).
+    # The caller will determine which is vapor/liquid based on density.
+    refined_asc = sorted(set(round(z, 10) for z in refined))
+    while len(refined_asc) < 3:
+        refined_asc.append(refined_asc[-1] if refined_asc else 0.3)
+    # Return: (smallest, middle, largest)
+    return float(refined_asc[0]), float(refined_asc[1]), float(refined_asc[2])
 
 
 def pr_density(Z, T, P, M):
@@ -327,73 +390,94 @@ def pr_residual_entropy(T, P, Z, Tc, Pc, omega):
 # ============================================================================
 
 def estimate_thermal_conductivity_pr(T, P, Z, M, Tc, Pc, omega, Cp_ideal):
-    """Estimate thermal conductivity via Eucken/Chung method [W/(m*K)]"""
-    M_g = M * 1000.0  # g/mol
-    Tr = T / Tc
-    Cv_ideal = max(Cp_ideal - R_GAS, R_GAS * 1.5)
-
-    # Collision integral
-    Omega_v = (
-        1.16145 * Tr**(-0.14874)
-        + 0.52487 * np.exp(-0.77320 * Tr)
-        + 2.16178 * np.exp(-2.43787 * Tr)
-    )
-    Fc = 1.0 - 0.2756 * omega
-
-    Vc_est = M_g * R_GAS * Tc / Pc
-    sigma = np.cbrt(0.809 * Vc_est)
-    mu0_muPas = 40.785 * Fc * np.sqrt(M_g * T) / (sigma**2 * Omega_v) * 1e-3
-    mu0_muPas *= (1.0 + 2.5 * omega)
-    mu0_Pas = mu0_muPas * 1e-6
-
-    # Modified Eucken correlation
-    lambda0 = mu0_Pas * Cv_ideal / (M_g / 1000.0) * (1.32 + 1.77 * (R_GAS / Cv_ideal)) * 0.15
-
-    # Dense fluid enhancement
-    rho_actual = pr_density(Z, T, P, M)
-    rho_c = M * Pc / (R_GAS * Tc * 0.28)
-    rho_r = max(rho_actual / (rho_c + 1e-15), 0.0)
-    if rho_r > 0.05:
-        lambda0 *= (1.0 + 0.5 * rho_r**0.8)
-
-    return max(lambda0, 0.001)
-
-
-def estimate_viscosity_pr(T, P, Z, M, Tc, Pc, omega):
-    """Estimate dynamic viscosity via Chung et al. method [muPa*s]"""
+    """Estimate thermal conductivity via Chung+Eucken method [W/(m*K)]"""
     M_g = M * 1000.0
     Tr = T / Tc
-
+    Cv_ideal = max(Cp_ideal - R_GAS, R_GAS * 1.5)
+    Zc = 0.288
+    Vc_cm3 = Zc * R_GAS * Tc / Pc * 1e6
+    sigma_a = 0.809 * np.cbrt(Vc_cm3)
     Omega_v = (
-        1.16145 * Tr**(-0.14874)
+        1.16145 / (Tr ** 0.14874)
         + 0.52487 * np.exp(-0.77320 * Tr)
         + 2.16178 * np.exp(-2.43787 * Tr)
     )
     Fc = 1.0 - 0.2756 * omega
-
-    Vc_est = M_g * R_GAS * Tc / Pc
-    sigma = np.cbrt(0.809 * Vc_est)
-    mu0 = 40.785 * Fc * np.sqrt(M_g * T) / (sigma**2 * Omega_v) * 1e-3 * 0.12
-    mu0 *= (1.0 + 2.5 * omega)
-
-    # Dense gas correction
+    mu0_muP = 26.69 * Fc * np.sqrt(M_g * T) / (sigma_a ** 2 * Omega_v)
+    mu0_Pas = mu0_muP * 1e-7
+    alpha_c = Cv_ideal / R_GAS - 1.5
+    beta_c = 0.7862 - 0.7109 * omega + 1.3168 * omega ** 2
+    psi_c = 1.0 + alpha_c * (
+        (0.215 + 0.28288 * alpha_c - 1.061 * beta_c + 0.26665 * Zc)
+        / (0.6366 + beta_c * Zc + 1.061 * alpha_c * beta_c)
+    )
+    lambda0 = 3.75 * psi_c / (Cv_ideal / R_GAS) * mu0_Pas * Cv_ideal / (M_g / 1000.0)
     rho_actual = pr_density(Z, T, P, M)
-    rho_c = M * Pc / (R_GAS * Tc * 0.28)
+    rho_c = M * Pc / (R_GAS * Tc * Zc)
     rho_r = max(rho_actual / (rho_c + 1e-15), 0.0)
+    if rho_r > 0.02:
+        lambda0 *= (1.0 + 0.4 * rho_r ** 0.7)
+    return max(lambda0, 0.001)
 
+def estimate_viscosity_pr(T, P, Z, M, Tc, Pc, omega):
+    """Estimate dynamic viscosity via Chung et al. (1988) [muPa*s]"""
+    M_g = M * 1000.0
+    Tr = T / Tc
+    Zc_v = 0.288
+    Vc_cm3 = Zc_v * R_GAS * Tc / Pc * 1e6
+    sigma_a = 0.809 * np.cbrt(Vc_cm3)
+    Omega_v = (
+        1.16145 / (Tr ** 0.14874)
+        + 0.52487 * np.exp(-0.77320 * Tr)
+        + 2.16178 * np.exp(-2.43787 * Tr)
+    )
+    Fc = 1.0 - 0.2756 * omega
+    mu0_muP = 26.69 * Fc * np.sqrt(M_g * T) / (sigma_a ** 2 * Omega_v)
+    if omega > 0.01:
+        mu0_muP *= (1.0 + 0.8 * omega)
+    mu0_muPas = mu0_muP / 10.0
+    rho_actual = pr_density(Z, T, P, M)
+    rho_c = M * Pc / (R_GAS * Tc * Zc_v)
+    rho_r = max(rho_actual / (rho_c + 1e-15), 0.0)
     if rho_r > 0.01:
-        FK = np.exp(1.15 * rho_r**0.85 / (Tr + 0.1))
-        mu_total = mu0 * FK
+        FK = 1.0 + 1.114 * rho_r ** 0.894 / (Tr + 0.912)
+        mu_total = mu0_muPas * FK
     else:
-        mu_total = mu0
-
+        mu_total = mu0_muPas
     return max(mu_total, 0.5)
 
 
 
-# ============================================================================
-# 4. CoolProp Engine Service
-# ============================================================================
+def calc_thermal_expansion_pr(T, P, Z, M, Tc, Pc, omega):
+    """Calculate thermal expansion coefficient alpha via numerical derivative.
+    
+    alpha = -(rho(T+dT) - rho(T-dT)) / (rho(T) * 2*dT)
+    where dT = 0.5 K
+    
+    Returns:
+        float: alpha in 1/K
+    """
+    dT = 0.5
+    try:
+        # Get density at T+dT
+        Z_plus, _, _ = solve_pr_cubic(T + dT, P, Tc, Pc, omega)
+        rho_plus = pr_density(Z_plus, T + dT, P, M)
+        
+        # Get density at T-dT
+        Z_minus, _, _ = solve_pr_cubic(T - dT, P, Tc, Pc, omega)
+        rho_minus = pr_density(Z_minus, T - dT, P, M)
+        
+        # Get density at T
+        rho_T = pr_density(Z, T, P, M)
+        
+        if rho_T <= 0 or rho_plus <= 0 or rho_minus <= 0:
+            return 0.0
+        
+        # alpha = -(drho/dT)_P / rho
+        alpha = -(rho_plus - rho_minus) / (rho_T * 2.0 * dT)
+        return max(alpha, -1.0)  # clamp unreasonable negative values
+    except Exception:
+        return 0.0
 
 def coolprop_properties(T, P, fluid, M):
     """Query CoolProp for fluid properties.
@@ -417,6 +501,7 @@ def coolprop_properties(T, P, fluid, M):
         cv_mass = CP.PropsSI("O", "T", T, "P", P, fluid)   # J/(kg*K)
         tc = CP.PropsSI("L", "T", T, "P", P, fluid)        # W/(m*K)
         visc = CP.PropsSI("V", "T", T, "P", P, fluid)      # Pa*s
+        alpha_cp = CP.PropsSI("ISOBARIC_EXPANSION_COEFFICIENT", "T", T, "P", P, fluid)  # 1/K
 
         if density <= 0 or np.isnan(density):
             raise ValueError(f"Invalid density: {density}")
@@ -427,107 +512,195 @@ def coolprop_properties(T, P, fluid, M):
             "cv": cv_mass / 1000.0,              # kJ/(kg*K)
             "thermal_conductivity": tc,          # W/(m*K)
             "viscosity": visc * 1e6,             # muPa*s
+            "thermal_expansion": alpha_cp,           # 1/K
         }
     except Exception as e:
         return {"error": str(e)}
 
+
+
+def pr_fugacity_coeff(Z, T, P, Tc, Pc, omega):
+    """PR EOS fugacity coefficient ln(phi).
+    
+    ln(phi) = Z - 1 - ln(Z - B) - A/(2*sqrt(2)*B) * ln((Z + (1+sqrt(2))B)/(Z + (1-sqrt(2))B))
+    """
+    a_val, b_val = pr_parameters(T, P, Tc, Pc, omega)
+    RT = R_GAS * T
+    A = a_val * P / (RT ** 2)
+    B = b_val * P / RT
+    sqrt2 = np.sqrt(2.0)
+    if Z <= B:
+        return -1e10  # invalid, heavily penalize
+    term1 = Z - 1.0
+    term2 = -np.log(Z - B)
+    term3 = -A / (2.0 * sqrt2 * B) * np.log((Z + (1.0 + sqrt2) * B) / (Z + (1.0 - sqrt2) * B))
+    return term1 + term2 + term3
+
+
+def estimate_psat_pr(T, Tc, Pc, omega, max_iter=50, tol=1e-4):
+    """Estimate saturated vapor pressure using PR EOS fugacity equality.
+    
+    Bisection on ln(phi_vapor) - ln(phi_liquid) = 0.
+    Uses Pitzer correlation as initial guess, refined by fugacity balance.
+    Returns Psat in Pa.
+    """
+    if T >= Tc:
+        return Pc
+
+    Tr = T / Tc
+
+    def fug_diff(P_test):
+        """ln(phi_v) - ln(phi_l). Should cross 0 at Psat."""
+        try:
+            Z_s, Z_m, Z_l = solve_pr_cubic(T, P_test, Tc, Pc, omega)
+            # If only one real root (Z_s == Z_l), return a large negative to push search lower
+            if abs(Z_s - Z_l) < 1e-6:
+                return -10.0
+            ln_phi_v = pr_fugacity_coeff(Z_l, T, P_test, Tc, Pc, omega)
+            ln_phi_l = pr_fugacity_coeff(Z_s, T, P_test, Tc, Pc, omega)
+            return ln_phi_v - ln_phi_l
+        except Exception:
+            return 1.0
+
+    # Pitzer initial guess
+    log10_Pr = (7.0 / 3.0) * (1.0 + omega) * (1.0 - 1.0 / Tr)
+    Psat_pitzer = Pc * (10.0 ** log10_Pr)
+
+    # Set bounds: search around Pitzer estimate
+    P_lo = max(Psat_pitzer * 0.1, Pc * 1e-8)
+    P_hi = min(Psat_pitzer * 10.0, Pc * 0.95)
+
+    # Ensure P_hi is in the three-root region (fug_diff meaningful)
+    # At pressures near Pc, only one root exists; find the max P with 3 distinct roots
+    for _ in range(20):
+        Z_s, Z_m, Z_l = solve_pr_cubic(T, P_hi, Tc, Pc, omega)
+        if abs(Z_s - Z_l) > 1e-6:
+            break
+        P_hi *= 0.8
+    P_hi = max(P_hi, P_lo * 2.0)
+
+    f_lo = fug_diff(P_lo)
+    f_hi = fug_diff(P_hi)
+
+    # If no sign change, the Pitzer estimate is already good
+    if f_lo * f_hi >= 0:
+        return Psat_pitzer
+
+    # Bisection
+    for _ in range(max_iter):
+        P_mid = (P_lo + P_hi) / 2.0
+        f_mid = fug_diff(P_mid)
+        if abs(f_mid) < tol:
+            return P_mid
+        if f_lo * f_mid < 0:
+            P_hi = P_mid; f_hi = f_mid
+        else:
+            P_lo = P_mid; f_lo = f_mid
+
+    return (P_lo + P_hi) / 2.0
 
 def pr_engine_properties(T, P, fluid_info):
     """Compute all properties using self-developed PR EOS.
 
-    Args:
-        T: Temperature in K
-        P: Pressure in Pa
-        fluid_info: Tuple from FLUID_DATABASE
-
-    Returns:
-        dict with: density, cp, cv, Z, H_res, S_res,
-                   thermal_conductivity, viscosity,
-                   Z_vapor, Z_liquid
+    Root selection based on Psat from PR fugacity equality iteration:
+    1. Estimate Psat via Pitzer, refine by bisection on ln(phi_v)-ln(phi_l)
+    2. T > Tc -> supercritical, use Z_large (vapor-like)
+    3. T <= Tc: P < 0.95*Psat -> vapor (Z_large)
+                P > 1.05*Psat -> liquid (Z_small)
+                otherwise -> two-phase (Z_large + warning)
     """
     try:
-        name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
-        M = M_gmol / 1000.0  # kg/mol
-        Pc_pa = Pc * 1e6     # MPa -> Pa
+        name_zh, name_en, T_triple, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+        M = M_gmol / 1000.0
+        Pc_pa = Pc * 1e6
 
-        # Step 1: Solve cubic for Z
-        Z_v, Z_l, Z_u = solve_pr_cubic(T, P, Tc, Pc_pa, omega)
+        # ---- Step 1: Solve cubic for Z (ascending order) ----
+        Z_s, Z_m, Z_l = solve_pr_cubic(T, P, Tc, Pc_pa, omega)
 
-        # Select physically meaningful root
-        if T < Tc:
-            Z_used = Z_v  # Largest root = vapor-like
+        # ---- Step 2: Estimate Psat via PR fugacity iteration ----
+        Psat_est = estimate_psat_pr(T, Tc, Pc_pa, omega)
+
+        # ---- Step 3: Phase detection and root selection ----
+        two_phase_flag = False
+        phase = "unknown"
+
+        if T > Tc:
+            phase = "supercritical"
+            Z_used = Z_l
+        elif P < Psat_est * 0.95:
+            phase = "vapor"
+            Z_used = Z_l
+        elif P > Psat_est * 1.05:
+            phase = "liquid"
+            Z_used = Z_s
         else:
-            Z_used = Z_v  # Supercritical
+            phase = "two-phase"
+            two_phase_flag = True
+            Z_used = Z_l
 
-        if Z_used <= 0.01:
-            raise ValueError(f"Abnormal Z = {Z_used:.6f}")
+        # Never use the middle root
+        if Z_used == Z_m:
+            Z_used = Z_l
 
-        # Step 2: Density
+        if Z_used <= 0.001 or Z_used > 5.0:
+            raise ValueError(f"Abnormal Z={Z_used:.6f} at T={T:.1f}K P={P/1e6:.4f}MPa")
+
+        Z_vapor_out = Z_l
+        Z_liquid_out = Z_s
+
+        # ---- Step 4: Density ----
         density = pr_density(Z_used, T, P, M)
 
-        # Step 3: Ideal gas heat capacity
-        A, B_cp_coef, C_cp_coef, D_cp_coef = cp_coeffs
-        Cp_ig_mol = (
-            A
-            + B_cp_coef * T
-            + C_cp_coef * T**2
-            + D_cp_coef * T**3
-        )  # J/(mol*K)
+        # ---- Step 5: Ideal gas heat capacity ----
+        A, B_cp, C_cp, D_cp = cp_coeffs
+        Cp_ig_mol = A + B_cp * T + C_cp * T**2 + D_cp * T**3
         Cv_ig_mol = max(Cp_ig_mol - R_GAS, R_GAS * 1.5)
 
-        # Step 4: Residual enthalpy & entropy
+        # ---- Step 6: Residual enthalpy & entropy ----
         H_res = pr_residual_enthalpy(T, P, Z_used, Tc, Pc_pa, omega)
         S_res = pr_residual_entropy(T, P, Z_used, Tc, Pc_pa, omega)
 
-        # Step 5: Total Cp via real gas Cp = Cp_ig + Cp_res
-        # Cp_res from PR EOS: Cp_res = R*(term_Cp) where
-        # term_Cp involves d^2a/dT^2 which we approximate numerically
-        # Use centered difference on (H_res + H_ig) instead of just H_res
-        # But since H_ig cancels, we just need to compute H_res at T +/- delta
-        # with Z re-solved at each temperature
-        delta_T = 0.1
-        # Re-solve Z at T+delta
-        Z_p, _, _ = solve_pr_cubic(T + delta_T, P, Tc, Pc_pa, omega)
-        H_p = pr_residual_enthalpy(T + delta_T, P, Z_p, Tc, Pc_pa, omega)
-        # Re-solve Z at T-delta
-        Z_m, _, _ = solve_pr_cubic(T - delta_T, P, Tc, Pc_pa, omega)
-        H_m = pr_residual_enthalpy(T - delta_T, P, Z_m, Tc, Pc_pa, omega)
-        Cp_res_contrib = (H_p - H_m) / (2.0 * delta_T)  # J/(mol*K)
-        Cp_total_mol = Cp_ig_mol + Cp_res_contrib  # J/(mol*K)
-        # Cp_total_mol is J/(mol*K), M_gmol is g/mol
-        # Convert: J/(mol*K) / (kg/mol) / 1000 = kJ/(kg*K)
-        # J/(mol*K) / (M_gmol/1000 kg/mol) / 1000 J/kJ = Cp_mol * 1000 / (M_gmol * 1000) = Cp_mol / M_gmol
-        Cp_total = Cp_total_mol / M_gmol  # kJ/(kg*K) [since J/g = kJ/kg]
-        Cv_total = Cv_ig_mol / M_gmol  # kJ/(kg*K)
+        # ---- Step 7: Cp via numerical derivative ----
+        dT = 0.1
+        Zp, _, _ = solve_pr_cubic(T + dT, P, Tc, Pc_pa, omega)
+        Hp = pr_residual_enthalpy(T + dT, P, Zp, Tc, Pc_pa, omega)
+        Zm, _, _ = solve_pr_cubic(T - dT, P, Tc, Pc_pa, omega)
+        Hm = pr_residual_enthalpy(T - dT, P, Zm, Tc, Pc_pa, omega)
+        Cp_res = (Hp - Hm) / (2.0 * dT)
+        Cp_total = (Cp_ig_mol + Cp_res) / M_gmol
+        Cv_total = Cv_ig_mol / M_gmol
 
-        # Step 6: Transport properties (corresponding states)
-        thermal_cond = estimate_thermal_conductivity_pr(
-            T, P, Z_used, M, Tc, Pc_pa, omega, Cp_ig_mol
-        )
-        viscosity = estimate_viscosity_pr(
-            T, P, Z_used, M, Tc, Pc_pa, omega
-        )
+        # ---- Step 8: Transport properties ----
+        tc = estimate_thermal_conductivity_pr(T, P, Z_used, M, Tc, Pc_pa, omega, Cp_ig_mol)
+        mu = estimate_viscosity_pr(T, P, Z_used, M, Tc, Pc_pa, omega)
+
+        # ---- Step 8.5: Thermal expansion coefficient ----
+        alpha = calc_thermal_expansion_pr(T, P, Z_used, M, Tc, Pc_pa, omega)
+
+# ---- Step 9: Sanity checks ----
+        rho_v = float(density); cp_v = float(Cp_total); cv_v = float(Cv_total)
+        tc_v = float(tc); mu_v = float(mu)
+
+        if not (0.01 <= rho_v <= 3000):
+            return {"error": f"Density out of range: {rho_v:.1f} kg/m3"}
+        if not (0.5 <= cp_v <= 50):
+            return {"error": f"Cp out of range: {cp_v:.2f} kJ/(kg.K)"}
+        if not (0.001 <= tc_v <= 10):
+            return {"error": f"TC out of range: {tc_v:.4f} W/(m.K)"}
+        if not (0.1 <= mu_v <= 10000):
+            return {"error": f"Viscosity out of range: {mu_v:.2f} muPa.s"}
 
         return {
-            "density": float(density),
-            "cp": float(Cp_total),
-            "cv": float(Cv_total),
-            "Z": float(Z_used),
-            "H_res": float(H_res),
-            "S_res": float(S_res),
-            "thermal_conductivity": float(thermal_cond),
-            "viscosity": float(viscosity),
-            "Z_vapor": float(Z_v),
-            "Z_liquid": float(Z_l),
+            "density": rho_v, "cp": cp_v, "cv": cv_v,
+            "Z": float(Z_used), "H_res": float(H_res), "S_res": float(S_res),
+            "thermal_conductivity": tc_v, "viscosity": mu_v,
+            "thermal_expansion": float(alpha),
+            "Z_vapor": float(Z_vapor_out), "Z_liquid": float(Z_liquid_out),
+            "two_phase": two_phase_flag, "phase": phase,
         }
     except Exception as e:
         return {"error": str(e)}
 
-
-
-# ============================================================================
-# 6. Deviation Calculation
-# ============================================================================
 
 def calc_deviation(val1, val2):
     """Calculate relative deviation: 100*(val1 - val2)/val2 [%]"""
@@ -563,181 +736,127 @@ def _compute_scan_data(fluid_info_tuple, P_pa, T_range_start, T_range_end, T_ran
     return pr_d, pr_c, pr_t, pr_v, cp_d, cp_c, cp_t, cp_v
 
 def create_property_plots(fluid_info, P_pa, T_range, lang):
-    """Create 4 interactive Plotly subplots with PR vs CoolProp overlay,
-    legend toggle, and max-deviation annotations."""
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
+    """Generate 4 Plotly subplots with PR/CoolProp overlay, phase-aware."""
+    name_zh, name_en, T_triple, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
 
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+    # [FIX P0-1] Smart temperature lower bound from triple point
+    T_min = max(T_triple + 30.0, 150.0) if T_triple is not None else 150.0
+    T_max = min(1000.0, Tc + 300.0)
+    T_scan = np.linspace(T_min, T_max, 80)
+    n = len(T_scan)
 
-    # Pre-allocate arrays
-    n = len(T_range)
-    pr_density_arr = np.full(n, np.nan)
-    pr_cp_arr = np.full(n, np.nan)
-    pr_tc_arr = np.full(n, np.nan)
-    pr_visc_arr = np.full(n, np.nan)
-    cp_density_arr = np.full(n, np.nan)
-    cp_cp_arr = np.full(n, np.nan)
-    cp_tc_arr = np.full(n, np.nan)
-    cp_visc_arr = np.full(n, np.nan)
+    pr_density_arr  = np.full(n, np.nan)
+    pr_cp_arr       = np.full(n, np.nan)
+    pr_tc_arr       = np.full(n, np.nan)
+    pr_visc_arr     = np.full(n, np.nan)
+    cp_density_arr  = np.full(n, np.nan)
+    cp_cp_arr       = np.full(n, np.nan)
+    cp_tc_arr       = np.full(n, np.nan)
+    cp_visc_arr     = np.full(n, np.nan)
+    two_phase_mask  = np.full(n, False)  # [FIX P0-1]
 
-    for i, T_val in enumerate(T_range):
+    for i, T_val in enumerate(T_scan):
         pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
         if "error" not in pr_res:
-            pr_density_arr[i] = pr_res.get("density", np.nan)
-            pr_cp_arr[i] = pr_res.get("cp", np.nan)
-            pr_tc_arr[i] = pr_res.get("thermal_conductivity", np.nan)
-            pr_visc_arr[i] = pr_res.get("viscosity", np.nan)
-
+            # [FIX P0-1] Detect two-phase via Z-factor gap
+            # Check if PR result indicates two-phase
+            if pr_res.get("two_phase", False):
+                two_phase_mask[i] = True
+            else:
+                pr_density_arr[i] = pr_res.get("density", np.nan)
+                pr_cp_arr[i]      = pr_res.get("cp", np.nan)
+                pr_tc_arr[i]      = pr_res.get("thermal_conductivity", np.nan)
+                pr_visc_arr[i]    = pr_res.get("viscosity", np.nan)
         cp_res = coolprop_properties(T_val, P_pa, cp_name, M_gmol / 1000.0)
         if "error" not in cp_res:
             cp_density_arr[i] = cp_res.get("density", np.nan)
-            cp_cp_arr[i] = cp_res.get("cp", np.nan)
-            cp_tc_arr[i] = cp_res.get("thermal_conductivity", np.nan)
-            cp_visc_arr[i] = cp_res.get("viscosity", np.nan)
+            cp_cp_arr[i]      = cp_res.get("cp", np.nan)
+            cp_tc_arr[i]      = cp_res.get("thermal_conductivity", np.nan)
+            cp_visc_arr[i]    = cp_res.get("viscosity", np.nan)
 
-    # Labels
+    # [FIX P0-1] Fixed y-axis ranges
+    y_ranges = [(0, 600), (0, 15), (0, 0.5), (0, 60)]
+
     if lang == "zh":
-        subplot_titles = [
-            "\u5bc6\u5ea6 vs \u6e29\u5ea6",
-            "Cp vs \u6e29\u5ea6",
-            "\u5bfc\u70ed\u7cfb\u6570 vs \u6e29\u5ea6",
-            "\u7c98\u5ea6 vs \u6e29\u5ea6",
-        ]
-        y_labels = [
-            "\u5bc6\u5ea6 (kg/m\u00b3)",
-            "Cp (kJ/(kg\u00b7K))",
-            "\u5bfc\u70ed\u7cfb\u6570 (W/(m\u00b7K))",
-            "\u7c98\u5ea6 (\u00b5Pa\u00b7s)",
-        ]
-        legend_pr = "PR\u65b9\u7a0b(\u81ea\u7814)"
-        legend_cp = "CoolProp(\u57fa\u51c6)"
-        x_label = "\u6e29\u5ea6 (K)"
-        ann_dev = "\u6700\u5927\u504f\u5dee"
+        y_labels = ["密度 (kg/m³)","Cp (kJ/(kg·K))","导热系数 (W/(m·K))","粘度 (µPa·s)"]
+        legend_pr = "PR方程(自研)"; legend_cp = "CoolProp(基准)"
+        x_label = "温度 (K)"; ann_dev = "最大偏差"
+        tp_label = "两相区(PR不适用)"
     else:
-        subplot_titles = [
-            "Density vs T", "Cp vs T", "TC vs T", "Viscosity vs T",
-        ]
-        y_labels = [
-            "Density (kg/m\u00b3)", "Cp (kJ/(kg\u00b7K))",
-            "TC (W/(m\u00b7K))", "Viscosity (\u00b5Pa\u00b7s)",
-        ]
-        legend_pr = "PR EOS (Self-dev)"
-        legend_cp = "CoolProp (Ref.)"
-        x_label = "Temperature (K)"
-        ann_dev = "Max Dev"
+        y_labels = ["Density (kg/m³)","Cp (kJ/(kg·K))","TC (W/(m·K))","Viscosity (µPa·s)"]
+        legend_pr = "PR EOS (Self-dev)"; legend_cp = "CoolProp (Ref.)"
+        x_label = "Temperature (K)"; ann_dev = "Max Dev"
+        tp_label = "Two-phase (PR N/A)"
 
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=subplot_titles,
-        vertical_spacing=0.14,
-        horizontal_spacing=0.10,
-    )
+    fig = make_subplots(rows=2, cols=2, subplot_titles=y_labels,
+                         vertical_spacing=0.14, horizontal_spacing=0.10)
+    fig.update_annotations(font=dict(family="Microsoft YaHei, SimHei, sans-serif", size=13, color="#e2e8f0"))
 
-    color_pr = "#7c3aed"
-    color_cp = "#06b6d4"
+    color_pr = "#c4b5fd"; color_cp = "#38bdf8"
 
     data_pairs = [
-        (pr_density_arr, cp_density_arr, 1, 1, y_labels[0]),
-        (pr_cp_arr, cp_cp_arr, 1, 2, y_labels[1]),
-        (pr_tc_arr, cp_tc_arr, 2, 1, y_labels[2]),
-        (pr_visc_arr, cp_visc_arr, 2, 2, y_labels[3]),
+        (pr_density_arr, cp_density_arr, 1, 1, y_labels[0], y_ranges[0]),
+        (pr_cp_arr, cp_cp_arr, 1, 2, y_labels[1], y_ranges[1]),
+        (pr_tc_arr, cp_tc_arr, 2, 1, y_labels[2], y_ranges[2]),
+        (pr_visc_arr, cp_visc_arr, 2, 2, y_labels[3], y_ranges[3]),
     ]
 
     annotations = []
 
-    for idx, (pr_data, cp_data, row, col, yl) in enumerate(data_pairs):
+    # [FIX P0-1] Two-phase zone boundaries
+    if np.any(two_phase_mask):
+        tp_idx = np.where(two_phase_mask)[0]
+        tp_start = T_scan[tp_idx[0]]; tp_end = T_scan[tp_idx[-1]]
+
+    for idx, (pr_data, cp_data, row, col, yl, (ylo, yhi)) in enumerate(data_pairs):
         show_legend = idx == 0
+        fig.add_trace(go.Scatter(x=T_scan, y=pr_data, mode="lines", name=legend_pr,
+            line=dict(color=color_pr, width=2.2), legendgroup="pr", showlegend=show_legend), row=row, col=col)
+        fig.add_trace(go.Scatter(x=T_scan, y=cp_data, mode="lines", name=legend_cp,
+            line=dict(color=color_cp, width=2.2, dash="dash"), legendgroup="cp", showlegend=show_legend), row=row, col=col)
 
-        # PR curve
-        fig.add_trace(
-            go.Scatter(
-                x=T_range, y=pr_data, mode="lines",
-                name=legend_pr,
-                line=dict(color=color_pr, width=2.2),
-                hovertemplate=f"{x_label}: %{{x:.1f}}<br>{yl}: %{{y:.3f}}<extra></extra>",
-                legendgroup="pr", showlegend=show_legend,
-            ),
-            row=row, col=col,
-        )
-        # CoolProp curve
-        fig.add_trace(
-            go.Scatter(
-                x=T_range, y=cp_data, mode="lines",
-                name=legend_cp,
-                line=dict(color=color_cp, width=2.2, dash="dash"),
-                hovertemplate=f"{x_label}: %{{x:.1f}}<br>{yl}: %{{y:.3f}}<extra></extra>",
-                legendgroup="cp", showlegend=show_legend,
-            ),
-            row=row, col=col,
-        )
+        # [FIX P0-1] Two-phase vertical lines
+        if np.any(two_phase_mask):
+            fig.add_vline(x=tp_start, line_dash="dot", line_color="rgba(255,255,255,0.25)", row=row, col=col)
+            fig.add_vline(x=tp_end, line_dash="dot", line_color="rgba(255,255,255,0.25)", row=row, col=col)
+            if idx == 0:
+                annotations.append(dict(x=(tp_start+tp_end)/2, y=yhi*0.55,
+                    xref=f"x{idx+1}", yref=f"y{idx+1}", text=tp_label,
+                    showarrow=False, font=dict(color="rgba(255,255,255,0.45)", size=10)))
 
-        # ---- Max deviation annotation ----
+        # [FIX P0-1] Deviation stats exclude NaN
         mask = np.isfinite(pr_data) & np.isfinite(cp_data) & (np.abs(cp_data) > 1e-12)
         if np.any(mask):
             dev_pct = np.abs((pr_data[mask] - cp_data[mask]) / cp_data[mask]) * 100
             max_idx_local = np.argmax(dev_pct)
             max_idx = np.where(mask)[0][max_idx_local]
-            T_ann = T_range[max_idx]
-            pr_ann = pr_data[max_idx]
-            cp_ann = cp_data[max_idx]
-            dev_ann = dev_pct[max_idx_local]
-            # Choose which curve to anchor: the one further from the other
-            y_mid = (pr_ann + cp_ann) / 2
-            # Annotate at PR curve position with arrow to CoolProp
-            annotations.append(dict(
-                x=T_ann, y=pr_ann,
+            annotations.append(dict(x=T_scan[max_idx], y=pr_data[max_idx],
                 xref=f"x{idx+1}", yref=f"y{idx+1}",
-                text=f"<b>{ann_dev}</b><br>{dev_ann:.1f}%",
-                showarrow=True, arrowhead=3, arrowsize=1.5,
-                arrowwidth=1.5, arrowcolor="#f59e0b",
-                ax=0, ay=-40 if pr_ann > cp_ann else 40,
-                font=dict(size=10, color="#f59e0b", family="Arial Black"),
-                bgcolor="rgba(0,0,0,0.7)",
-                bordercolor="#f59e0b", borderwidth=1, borderpad=4,
-            ))
+                text=f"<b>{ann_dev}</b><br>{dev_pct[max_idx_local]:.1f}%",
+                showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=1.5,
+                arrowcolor="#f59e0b", ax=0, ay=-40,
+                font=dict(size=10, color="#f59e0b"),
+                bgcolor="rgba(0,0,0,0.7)", bordercolor="#f59e0b", borderwidth=1, borderpad=4))
 
-    # Apply axis labels
-    for i, yl in enumerate(y_labels, 1):
-        r = 1 if i <= 2 else 2
-        c = 1 if i % 2 == 1 else 2
-        fig.update_xaxes(title_text=x_label, row=r, col=c, gridcolor="rgba(128,128,128,0.15)")
-        fig.update_yaxes(title_text=yl, row=r, col=c, gridcolor="rgba(128,128,128,0.15)")
+        # [FIX P0-1] Fixed y-axis
+        fig.update_yaxes(range=[ylo, yhi], row=row, col=col, gridcolor="rgba(128,128,128,0.15)")
 
-    fig.update_layout(
-        height=750,
-        hovermode="x unified",
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.03,
-            xanchor="center", x=0.5,
+    for i in range(1, 5):
+        r = 1 if i <= 2 else 2; cv = 1 if i % 2 == 1 else 2
+        fig.update_xaxes(title_text=x_label, row=r, col=cv, gridcolor="rgba(128,128,128,0.15)")
+
+    fig.update_layout(height=750, hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5,
             itemclick="toggle", itemdoubleclick="toggleothers",
             bgcolor="rgba(0,0,0,0.3)", bordercolor="rgba(255,255,255,0.1)",
-            font=dict(color="#e2e8f0", size=12),
-        ),
-        annotations=annotations,
-        margin=dict(l=50, r=30, t=80, b=50),
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
-
+            font=dict(color="#e2e8f0", size=12)),
+        annotations=annotations, margin=dict(l=50, r=30, t=80, b=50),
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Microsoft YaHei, SimHei, Segoe UI, Arial, sans-serif", size=13, color="#e2e8f0"))
     return fig
-
-
-
-# ============================================================================
-# 8. Streamlit UI - Main Application
-# ============================================================================
-
-
-
-# ============================================================================
-# 8. Streamlit UI - Main Application
-# ============================================================================
-
 def run_calculation(T_input, P_input, fluid_info_tuple):
     """Execute both engines and return results. Cached for performance."""
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info_tuple
+    name_zh, name_en, T_triple, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info_tuple
     M = M_gmol / 1000.0
     P_pa = P_input * 1e6
 
@@ -766,7 +885,7 @@ def run_calculation(T_input, P_input, fluid_info_tuple):
 
 def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     """Render results: one card per property with PR-vs-CoolProp side-by-side."""
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+    name_zh, name_en, T_triple, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
     fluid_display = name_zh if st.session_state["lang"] == "zh" else name_en
     is_zh = st.session_state["lang"] == "zh"
 
@@ -779,17 +898,30 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     )
     st.success(t["calc_ok"])
 
+    # Phase indicator
+    if pr_result and "error" not in pr_result:
+        ph = pr_result.get("phase", "")
+        if ph:
+            ph_label = {"vapor": t["phase_vapor"], "liquid": t["phase_liquid"],
+                        "supercritical": t["phase_supercritical"], "two-phase": t["phase_two_phase"]}.get(ph, ph)
+            st.caption(f'{t["phase_label"]}: {ph_label}')
+            if ph == "two-phase":
+                st.warning(t["warn_two_phase"])
+
+
+
     props_map = [
         ("density",              t["density"],      t["unit_density"]),
         ("cp",                   t["cp"],           t["unit_cp"]),
         ("cv",                   t["cv"],           t["unit_cp"]),
         ("thermal_conductivity", t["thermal_cond"], t["unit_tc"]),
         ("viscosity",            t["viscosity"],    t["unit_visc"]),
+        ("thermal_expansion",    t["thermal_expansion"], t["unit_alpha"]),
     ]
-    _fmt = {"density": ".3f", "cp": ".4f", "cv": ".4f", "thermal_conductivity": ".4f", "viscosity": ".4f"}
+    _fmt = {"density": ".3f", "cp": ".4f", "cv": ".4f", "thermal_conductivity": ".4f", "viscosity": ".4f", "thermal_expansion": ".4e"}
 
     pr_label = "\u81ea\u7814PR\u65b9\u7a0b" if is_zh else "PR EOS"
-    cp_label = "CoolProp\u57fa\u51c6" if is_zh else "CoolProp"
+    cp_label = "CoolProp基准" if is_zh else "CoolProp"
 
     # ---- 5 property cards, one per row ----
     for key, name, unit in props_map:
@@ -844,6 +976,11 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
             '</div>'
             '</div>'
         )
+        # Transport property note for tc and viscosity
+        if key == "thermal_conductivity" and "tc_note" in t:
+            card += f'<div class="prop-note">{t["tc_note"]}</div>'
+        if key == "viscosity" and "mu_note" in t:
+            card += f'<div class="prop-note">{t["mu_note"]}</div>'
         st.markdown(card, unsafe_allow_html=True)
 
     st.markdown("---")
@@ -856,7 +993,7 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     if pr_result and "error" in pr_result:
         st.warning(t["warn_pr_fail"].format(pr_result["error"]))
     if cp_result and "error" in cp_result:
-        st.warning(t["warn_coolprop"].format(cp_result["error"]))
+        st.warning(t["warn_coolprop"])
 
     # Z-factor
     if pr_result and "error" not in pr_result:
@@ -906,7 +1043,7 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     from datetime import datetime
     from fpdf import FPDF
 
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+    name_zh, name_en, T_triple, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
     fluid_display = name_zh if lang == "zh" else name_en
 
     # Try to use CJK font for Chinese; fall back to built-in for English
@@ -959,7 +1096,12 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
         else:
             pdf.set_font("Helvetica", "", 10)
         pdf.set_text_color(50)
-        pdf.cell(0, 6, text, new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, text, new_x="LMARGIN", new_y="NEXT")        # Transport property note for tc and viscosity
+        if key == "thermal_conductivity" and "tc_note" in t:
+            card_html += f'<div class="prop-note">{t["tc_note"]}</div>'
+        if key == "viscosity" and "mu_note" in t:
+            card_html += f'<div class="prop-note">{t["mu_note"]}</div>'
+            st.markdown(card_html, unsafe_allow_html=True)
 
     # ---- Section 1 ----
     s1 = "1. \u8ba1\u7b97\u53c2\u6570" if lang == "zh" else "1. Calculation Parameters"
@@ -972,7 +1114,11 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     ]
     for ln in info_lines:
         write_body(pdf, ln, use_cjk)
-    pdf.ln(4)
+        if key == "thermal_conductivity" and "tc_note" in t:
+            card_html += f'<div class="prop-note">{t["tc_note"]}</div>'
+        if key == "viscosity" and "mu_note" in t:
+            card_html += f'<div class="prop-note">{t["mu_note"]}</div>'
+    st.markdown(card_html, unsafe_allow_html=True)
 
     # ---- Section 2: Results Table ----
     s2 = "2. \u7269\u6027\u8ba1\u7b97\u7ed3\u679c" if lang == "zh" else "2. Property Results"
@@ -995,7 +1141,7 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     pdf.ln()
 
     props = [
-        ("density", "\u5bc6\u5ea6", "Density", "kg/m\\u00b3"),
+        ("density", "\u5bc6\u5ea6", "Density", "kg/m³"),
         ("cp", "\u5b9a\u538b\u6bd4\u70ed\u5bb9 Cp", "Cp", "kJ/(kg.K)"),
         ("cv", "\u5b9a\u5bb9\u6bd4\u70ed\u5bb9 Cv", "Cv", "kJ/(kg.K)"),
         ("thermal_conductivity", "\u5bfc\u70ed\u7cfb\u6570 \u03bb", "\u03bb", "W/(m.K)"),
@@ -1040,7 +1186,12 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
             f"  Z (liquid) = {pr_result.get('Z_liquid', 0):.6f}",
             f"  H_res = {pr_result.get('H_res', 0):.2f} J/mol",
         ]:
-            pdf.cell(0, 6, zl, new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 6, zl, new_x="LMARGIN", new_y="NEXT")        # Transport property note for tc and viscosity
+        if key == "thermal_conductivity" and "tc_note" in t:
+            card_html += f'<div class="prop-note">{t["tc_note"]}</div>'
+        if key == "viscosity" and "mu_note" in t:
+            card_html += f'<div class="prop-note">{t["mu_note"]}</div>'
+    st.markdown(card_html, unsafe_allow_html=True)
 
     # ---- Section 3: Charts ----
     pdf.add_page()
@@ -1058,7 +1209,12 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     except Exception:
         pdf.set_font("Helvetica", "I", 10)
         pdf.set_text_color(200, 50, 50)
-        pdf.cell(0, 8, "(Chart image could not be rendered. Please view the web app for interactive charts.)", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 8, "(Chart image could not be rendered. Please view the web app for interactive charts.)", new_x="LMARGIN", new_y="NEXT")        # Transport property note for tc and viscosity
+        if key == "thermal_conductivity" and "tc_note" in t:
+            card_html += f'<div class="prop-note">{t["tc_note"]}</div>'
+        if key == "viscosity" and "mu_note" in t:
+            card_html += f'<div class="prop-note">{t["mu_note"]}</div>'
+    st.markdown(card_html, unsafe_allow_html=True)
 
     # ---- Section 4: Disclaimer ----
     pdf.ln(4)
@@ -1144,6 +1300,149 @@ def render_validation_page(t):
 
     st.caption("\u7eff\u8272\u504f\u5dee<5% | \u6a59\u82725-20% | \u7ea2\u8272>20%")
 
+
+
+
+def material_screening_page(t):
+    """Material screening page: scan all 20 substances and filter by property criteria."""
+    st.subheader(t["screening_title"])
+    st.caption(t["screening_desc"])
+    
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        T_screen = st.number_input(
+            f'{t["temperature"]} ({t["unit_temp"]})',
+            min_value=200.0, max_value=600.0, value=300.0, step=1.0,
+            key="screen_T"
+        )
+    with col2:
+        P_screen = st.number_input(
+            f'{t["pressure"]} ({t["unit_press"]})',
+            min_value=0.1, max_value=10.0, value=1.0, step=0.1,
+            key="screen_P"
+        )
+    
+    prop_options = {
+        t["density"]: "density",
+        t["cp"]: "cp",
+        t["thermal_cond"]: "thermal_conductivity",
+        t["viscosity"]: "viscosity",
+        t["thermal_expansion"]: "thermal_expansion",
+    }
+    
+    col_a, col_b, col_c = st.columns([1.5, 1, 1.5])
+    with col_a:
+        prop_display = st.selectbox(
+            t["screening_target_prop"],
+            list(prop_options.keys()),
+            key="screen_prop"
+        )
+    with col_b:
+        condition = st.selectbox(
+            t["screening_condition"],
+            [">", "<"],
+            key="screen_cond"
+        )
+    with col_c:
+        threshold = st.number_input(
+            t["screening_threshold"],
+            value=0.0, step=0.001, format="%.6e",
+            key="screen_threshold"
+        )
+    
+    if st.button(t["screening_btn"], use_container_width=True, key="screen_btn"):
+        target_key = prop_options[prop_display]
+        P_pa = P_screen * 1e6
+        is_greater = (condition == ">")
+        
+        results = []
+        errors = []
+        
+        with st.spinner("Calculating all 20 substances..."):
+            for fluid_info in FLUID_DATABASE:
+                name_display = fluid_info[0] if st.session_state.get("lang", "zh") == "zh" else fluid_info[1]
+                try:
+                    pr_res = pr_engine_properties(T_screen, P_pa, fluid_info)
+                    if "error" in pr_res:
+                        errors.append(f"{name_display}: {pr_res['error']}")
+                        results.append({
+                            t["screening_col_fluid"]: name_display,
+                            t["screening_col_value"]: "N/A",
+                            t["screening_col_meet"]: t["screening_not_meet"],
+                        })
+                        continue
+                    
+                    val = pr_res.get(target_key)
+                    if val is None:
+                        results.append({
+                            t["screening_col_fluid"]: name_display,
+                            t["screening_col_value"]: "N/A",
+                            t["screening_col_meet"]: t["screening_not_meet"],
+                        })
+                        continue
+                    
+                    meets = (val > threshold) if is_greater else (val < threshold)
+                    results.append({
+                        t["screening_col_fluid"]: name_display,
+                        t["screening_col_value"]: val,
+                        t["screening_col_meet"]: t["screening_meet"] if meets else t["screening_not_meet"],
+                    })
+                except Exception as e:
+                    errors.append(f"{name_display}: {str(e)}")
+                    results.append({
+                        t["screening_col_fluid"]: name_display,
+                        t["screening_col_value"]: "Error",
+                        t["screening_col_meet"]: t["screening_not_meet"],
+                    })
+        
+        meet_str = t["screening_meet"]
+        met_results = [r for r in results if r[t["screening_col_meet"]] == meet_str]
+        not_met = [r for r in results if r[t["screening_col_meet"]] != meet_str]
+        
+        if is_greater:
+            met_results.sort(key=lambda x: x[t["screening_col_value"]] if isinstance(x[t["screening_col_value"]], (int, float)) else float('-inf'), reverse=True)
+            not_met.sort(key=lambda x: x[t["screening_col_value"]] if isinstance(x[t["screening_col_value"]], (int, float)) else float('-inf'), reverse=True)
+        else:
+            met_results.sort(key=lambda x: x[t["screening_col_value"]] if isinstance(x[t["screening_col_value"]], (int, float)) else float('inf'))
+            not_met.sort(key=lambda x: x[t["screening_col_value"]] if isinstance(x[t["screening_col_value"]], (int, float)) else float('inf'))
+        
+        all_sorted = met_results + not_met
+        
+        if met_results:
+            st.success(t["screening_results_count"].format(len(met_results)))
+        else:
+            st.warning(t["screening_no_results"])
+        
+        display_rows = []
+        for r in all_sorted:
+            val = r[t["screening_col_value"]]
+            if isinstance(val, float):
+                if abs(val) < 0.001 or abs(val) >= 10000:
+                    val_str = f"{val:.4e}"
+                else:
+                    val_str = f"{val:.4f}"
+            else:
+                val_str = str(val)
+            display_rows.append({
+                t["screening_col_fluid"]: r[t["screening_col_fluid"]],
+                t["screening_col_value"]: val_str,
+                t["screening_col_meet"]: r[t["screening_col_meet"]],
+            })
+        
+        df = pd.DataFrame(display_rows)
+        
+        def highlight_meet(val):
+            if val == meet_str:
+                return 'color: #6ee7b7; font-weight: bold'
+            return 'color: rgba(255,255,255,0.3)'
+        
+        styled = df.style.map(highlight_meet, subset=[t["screening_col_meet"]])
+        st.dataframe(styled, width='stretch', height=600)
+        
+        if errors:
+            with st.expander(f"\u26a0 {len(errors)} calculation errors"):
+                for e in errors:
+                    st.caption(e)
 
 
 def main():
@@ -1371,8 +1670,17 @@ def main():
     .dev-red-v2 .dev-dot { background: #fb923c; }
     .dev-na-v2     { color: rgba(255,255,255,0.30); background: rgba(100,116,139,0.06); }
 
+    /* --- Transport property note --- */
+    .prop-note {
+        font-size: 0.58rem;
+        color: rgba(255, 255, 255, 0.25);
+        margin-top: 6px;
+        font-style: italic;
+        line-height: 1.3;
+    }
+
     /* --- Status bar --- */
-    .status-bar {
+    .status-bar { white-space: nowrap;
         display: flex; align-items: center; gap: 10px;
         padding: 10px 14px; border-radius: 12px;
         background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(12px);
@@ -1424,7 +1732,9 @@ def main():
         color: rgba(255, 255, 255, 0.38);
         margin-bottom: 4px;
     }
-    </style>""", unsafe_allow_html=True)
+    
+
+</style>""", unsafe_allow_html=True)
     # Session state
     for k, v in {"lang": "zh", "calc_done": False, "pr_result": None, "cp_result": None,
                   "T_input": 300.0, "P_input": 1.0, "fluid_idx": 0,
@@ -1436,6 +1746,24 @@ def main():
 
     with st.sidebar:
         st.header(t["sidebar_header"])
+
+        # ---- Mode switch (Material Screening / Property Calc) ----
+        if "app_mode" not in st.session_state:
+            st.session_state["app_mode"] = "calc"
+        
+        mode_choice = st.radio(
+            t["mode_label"],
+            options=[t["mode_calc"], t["mode_screening"]],
+            index=0 if st.session_state["app_mode"] == "calc" else 1,
+            horizontal=True,
+            key="mode_sel"
+        )
+        new_mode = "calc" if mode_choice == t["mode_calc"] else "screening"
+        if new_mode != st.session_state["app_mode"]:
+            st.session_state["app_mode"] = new_mode
+            st.rerun()
+        
+        st.markdown("---")
 
         # Language toggle
         lang_choice = st.radio(
@@ -1453,88 +1781,80 @@ def main():
         t = LANG[st.session_state["lang"]]
         st.markdown("---")
 
-        # ---- INPUT WIDGETS (always shown) ----
-        with st.form("calc_form", border=False):
-            fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
+        fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
 
-            # Temperature: slider + number (synced via session_state, no immediate rerun)
-            T_input = st.slider(
-                f'{t["temperature"]} ({t["unit_temp"]})',
-                min_value=200.0, max_value=600.0,
-                value=st.session_state["T_input"], step=1.0,
-                key="T_input"
-            )
-            P_input = st.slider(
-                f'{t["pressure"]} ({t["unit_press"]})',
-                min_value=0.1, max_value=10.0,
-                value=st.session_state["P_input"], step=0.1,
-                key="P_input"
-            )
+        # Temperature input
+        T_input = st.number_input(
+            f'{t["temperature"]} ({t["unit_temp"]})',
+            min_value=200.0, max_value=600.0,
+            value=st.session_state.get("T_input", 300.0), step=1.0,
+            key="T_input"
+        )
+        # Pressure input
+        P_input = st.number_input(
+            f'{t["pressure"]} ({t["unit_press"]})',
+            min_value=0.1, max_value=10.0,
+            value=st.session_state.get("P_input", 1.0), step=0.1,
+            key="P_input"
+        )
 
-            fluid_choice = st.selectbox(
-                t["fluid_select"], fluid_options,
-                index=st.session_state["fluid_idx"], key="fluid_sel"
-            )
+        # Fluid selection
+        fluid_choice = st.selectbox(
+            t["fluid_select"],
+            fluid_options,
+            index=st.session_state.get("fluid_idx", 0),
+            key="fluid_sel"
+        )
 
-            submitted = st.form_submit_button(t["calc_button"], width='stretch')
+        # Calculate button
+        if st.button(t["calc_button"], use_container_width=True):
+            for i, item in enumerate(FLUID_DATABASE):
+                if item[0 if st.session_state["lang"] == "zh" else 1] == fluid_choice:
+                    st.session_state["fluid_idx"] = i
+                    break
+            fluid_info = FLUID_DATABASE[st.session_state["fluid_idx"]]
+            try:
+                pr_res, cp_res, rw = run_calculation(T_input, P_input, fluid_info)
+                st.session_state["pr_result"] = pr_res
+                st.session_state["cp_result"] = cp_res
+                st.session_state["fluid_info"] = fluid_info
+                st.session_state["P_pa"] = P_input * 1e6
+                st.session_state["range_warning"] = rw
+                st.session_state["calc_done"] = True
+            except Exception as e:
+                st.session_state["pr_result"] = {"error": str(e)}
+                st.session_state["cp_result"] = {"error": str(e)}
+                st.session_state["calc_done"] = True
+            st.rerun()
 
-            if submitted:
-                for i, item in enumerate(FLUID_DATABASE):
-                    if item[0 if st.session_state["lang"] == "zh" else 1] == fluid_choice:
-                        st.session_state["fluid_idx"] = i
-                        break
-                fluid_info = FLUID_DATABASE[st.session_state["fluid_idx"]]
-                try:
-                    pr_res, cp_res, rw = run_calculation(T_input, P_input, fluid_info)
-                    st.session_state["pr_result"] = pr_res
-                    st.session_state["cp_result"] = cp_res
-                    st.session_state["fluid_info"] = fluid_info
-                    st.session_state["P_pa"] = P_input * 1e6
-                    st.session_state["range_warning"] = rw
-                    st.session_state["calc_done"] = True
-                except Exception as e:
-                    st.session_state["pr_result"] = {"error": str(e)}
-                    st.session_state["cp_result"] = {"error": str(e)}
-                    st.session_state["calc_done"] = True
-                st.rerun()
-
-        with st.expander(t["scope_title"]):
+        # Scope
+        with st.expander(t["scope_title"], expanded=True):
             st.markdown(t["scope_text"], unsafe_allow_html=True)
-        # Engine status indicator
+
+        # Engine status
         st.markdown(
             '<div class="status-bar">'
             '<span class="status-dot"></span> '
-            + ("\U0001f7e2 \u5f15\u64ce\u5c31\u7eea | <span style=\"background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;\">PR + CoolProp</span>" if st.session_state["lang"] == "zh" else "\U0001f7e2 Engines Ready | <span style=\"background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;\">PR + CoolProp</span>")
+            + ("🟢 引擎就绪 | PR + CoolProp" if st.session_state["lang"] == "zh" else "🟢 Engines Ready | PR + CoolProp")
             + '</div>',
             unsafe_allow_html=True,
         )
 
-
-    
-    if not st.session_state["calc_done"]:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.info(t["first_time_msg"])
-        with col2:
-            with st.expander(t["about_title"]):
-                st.markdown(t["about_text"], unsafe_allow_html=True)
-        st.markdown("---")
-        st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
-        return
-
-    if st.session_state.get("range_warning") == "range":
-        st.warning(t["warn_range"])
-
-    try:
-        render_results(st.session_state["pr_result"], st.session_state["cp_result"],
-                       st.session_state["fluid_info"], st.session_state["P_pa"], t)
-    except Exception as e:
-        st.error(f"\u7ed3\u679c\u6e32\u67d3\u5f02\u5e38: {str(e)}")
-        st.code(traceback.format_exc())
-
-    st.markdown("---")
-    st.caption("\U0001f9ea ThermoCalc v2.0 | \u5316\u5de5\u70ed\u7269\u6027\u8ba1\u7b97\u8f6f\u4ef6 | Powered by Peng-Robinson EOS + CoolProp")
-
-
-if __name__ == "__main__":
-    main()
+    # ---- Main content area (outside sidebar) ----
+    if st.session_state.get("app_mode", "calc") == "screening":
+        material_screening_page(t)
+    elif st.session_state.get("calc_done", False) and st.session_state.get("fluid_info"):
+        # Render property calculation results
+        fluid_info = st.session_state["fluid_info"]
+        pr_result = st.session_state.get("pr_result")
+        cp_result = st.session_state.get("cp_result")
+        P_pa = st.session_state.get("P_pa")
+        range_warning = st.session_state.get("range_warning")
+        
+        if range_warning == "range":
+            st.warning(t["warn_range"])
+        
+        render_results(pr_result, cp_result, fluid_info, P_pa, t)
+    else:
+        # First visit: show welcome message
+        st.info(t["first_time_msg"])
