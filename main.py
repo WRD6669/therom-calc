@@ -721,7 +721,9 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
         )
 
         # ---- Max deviation annotation ----
-        mask = np.isfinite(pr_data) & np.isfinite(cp_data) & (np.abs(cp_data) > 1e-12)
+        mask = (np.isfinite(pr_data) & np.isfinite(cp_data) &
+                (np.abs(cp_data) > 1e-12) &
+                (np.abs(pr_data) > 0.1) & (np.abs(cp_data) > 0.1))
         if np.any(mask):
             dev_pct = np.abs((pr_data[mask] - cp_data[mask]) / cp_data[mask]) * 100
             max_idx_local = np.argmax(dev_pct)
@@ -794,7 +796,7 @@ def run_calculation(T_input, P_input, fluid_info_tuple):
     range_warning = None
 
     # Range check
-    if T_input < 50 or T_input > 2000 or P_input < 0.001 or P_input > 100:
+    if T_input < 200 or T_input > 600 or P_input < 0.1 or P_input > 10:
         range_warning = "range"
 
     # PR Engine
@@ -921,9 +923,11 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
 
     # Charts
     st.subheader(t["plot_header"])
-    T_min = max(50.0, Tc - 200.0)
+    # 等压扫描温度范围：避免PR方程不适用的深冷区
+    # T_min不小于150K，且不低于Tc-100K（避免进入两相/近饱和区）
+    T_min = max(150.0, Tc - 100.0)
     T_max = min(2000.0, Tc + 300.0)
-    T_range = np.linspace(T_min, T_max, 80)
+    T_range = np.linspace(T_min, T_max, 120)
     lang_label = "\u751f\u6210\u66f2\u7ebf\u4e2d..." if is_zh else "Generating curves..."
     with st.spinner(lang_label):
         fig = create_property_plots(fluid_info, P_pa, T_range, st.session_state["lang"])
@@ -1506,7 +1510,7 @@ def render_main_page():
     </style>""", unsafe_allow_html=True)
     # Session state
     for k, v in {"lang": "zh", "calc_done": False, "pr_result": None, "cp_result": None,
-                  "T_input": 298.15, "P_input": 0.1013, "fluid_idx": 0,
+                  "T_input": 300.0, "P_input": 1.0, "fluid_idx": 0,
                   "fluid_info": None, "P_pa": None, "range_warning": None}.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -1536,39 +1540,21 @@ def render_main_page():
         with st.form("calc_form", border=False):
             fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
 
-            # 温度输入：精确输入框 + 滑动条双向同步
-            col_t1, col_t2 = st.columns([3, 2])
-            with col_t1:
-                T_slider = st.slider(
-                    f'{t["temperature"]} ({t["unit_temp"]})',
-                    min_value=50.0, max_value=2000.0,
-                    value=st.session_state["T_input"], step=1.0,
-                    key="T_slider"
-                )
-            with col_t2:
-                T_input = st.number_input(
-                    f'{t["temperature"]} ({t["unit_temp"]})',
-                    min_value=50.0, max_value=2000.0,
-                    value=st.session_state["T_input"], step=0.01,
-                    format="%.2f", key="T_input"
-                )
+            # 温度输入
+            T_input = st.number_input(
+                f'{t["temperature"]} ({t["unit_temp"]})',
+                min_value=200.0, max_value=600.0,
+                value=st.session_state["T_input"], step=1.0,
+                key="T_input"
+            )
 
-            # 压力输入：精确输入框 + 滑动条双向同步
-            col_p1, col_p2 = st.columns([3, 2])
-            with col_p1:
-                P_slider = st.slider(
-                    f'{t["pressure"]} ({t["unit_press"]})',
-                    min_value=0.001, max_value=100.0,
-                    value=st.session_state["P_input"], step=0.01,
-                    key="P_slider"
-                )
-            with col_p2:
-                P_input = st.number_input(
-                    f'{t["pressure"]} ({t["unit_press"]})',
-                    min_value=0.001, max_value=100.0,
-                    value=st.session_state["P_input"], step=0.0001,
-                    format="%.4f", key="P_input"
-                )
+            # 压力输入
+            P_input = st.number_input(
+                f'{t["pressure"]} ({t["unit_press"]})',
+                min_value=0.1, max_value=10.0,
+                value=st.session_state["P_input"], step=0.1,
+                key="P_input"
+            )
 
             fluid_choice = st.selectbox(
                 t["fluid_select"], fluid_options,
