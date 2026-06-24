@@ -3892,14 +3892,50 @@ def render_materials_database():
             {
                 "title_zh": "低热膨胀陶瓷基板 — 5G通信设备封装",
                 "title_en": "Low-CTE Ceramic Substrate — 5G Packaging",
-                "desc_zh": "AlN陶瓷基板，导热系数180 W/(m·K)，热膨胀系数4.5×10^-6/K，与Si芯片匹配。",
-                "desc_en": "AlN substrate with TC 180 W/(m·K), CTE 4.5×10^-6/K matching Si chips.",
+                "desc_zh": "AlN陶瓷基板，导热系数180 W/(m·K)，热膨胀系数4.5×10^-6/K，与Si芯片匹配，保障高频信号传输稳定性。",
+                "desc_en": "AlN substrate with TC 180 W/(m·K), CTE 4.5×10^-6/K matching Si chips for stable 5G signal transmission.",
             },
             {
                 "title_zh": "相变储能材料 — 光伏热管理",
                 "title_en": "PCM Energy Storage — PV Thermal Management",
-                "desc_zh": "石蜡(RT42)相变材料，潜热200 J/g，熔点42°C，用于光伏组件温度调控。",
-                "desc_en": "Paraffin RT42 with 200 J/g latent heat, 42°C melting point for PV temperature regulation.",
+                "desc_zh": "石蜡(RT42)相变材料，潜热200 J/g，熔点42°C，用于光伏组件温度调控，可将电池板工作温度降低15-20°C。",
+                "desc_en": "Paraffin RT42 with 200 J/g latent heat, reduces PV panel temperature by 15-20°C.",
+            },
+            {
+                "title_zh": "轻量化散热器 — 航空航天电子设备",
+                "title_en": "Lightweight Heat Sink — Aerospace Electronics",
+                "desc_zh": "碳纤维/环氧树脂复合材料，密度仅1550 kg/m³（铝的57%），导热系数5.0 W/(m·K)，用于卫星电子舱散热。",
+                "desc_en": "CF/Epoxy composite, density 1550 kg/m³ (57% of Al), TC 5.0 W/(m·K) for satellite electronics cooling.",
+            },
+            {
+                "title_zh": "导热界面材料(TIM) — 芯片散热",
+                "title_en": "Thermal Interface Material — Chip Cooling",
+                "desc_zh": "氮化硼/硅橡胶复合材料，导热系数3.5 W/(m·K)，柔弹性填充芯片与散热器间微间隙，降低接触热阻。",
+                "desc_en": "BN/Silicone composite, TC 3.5 W/(m·K), fills micro-gaps between chip and heatsink, reducing contact resistance.",
+            },
+            {
+                "title_zh": "电子封装基板 — IGBT功率模块",
+                "title_en": "Electronic Packaging Substrate — IGBT Power Modules",
+                "desc_zh": "碳化硅/铝基复合材料，导热系数180 W/(m·K)，热膨胀系数8.0×10^-6/K，匹配半导体芯片，用于高铁牵引IGBT模块。",
+                "desc_en": "SiC/Al MMC with TC 180 W/(m·K), CTE 8.0×10^-6/K matching semiconductors, for high-speed rail IGBT modules.",
+            },
+            {
+                "title_zh": "精密仪器结构件 — 航天光学系统",
+                "title_en": "Precision Instrument — Space Optics",
+                "desc_zh": "Invar合金，热膨胀系数仅1.5×10^-6/K（钢的1/8），用于太空望远镜镜筒，温度变化±50°C时形变<0.1μm。",
+                "desc_en": "Invar alloy, CTE 1.5×10^-6/K (1/8 of steel), for space telescope barrels, deformation <0.1μm over ±50°C.",
+            },
+            {
+                "title_zh": "中温储能材料 — 工业余热回收",
+                "title_en": "Mid-Temperature Storage — Industrial Waste Heat Recovery",
+                "desc_zh": "赤藓糖醇相变材料，熔点120°C，相变潜热340 J/g，用于钢铁厂、化工厂余热回收，储能密度是水的2倍以上。",
+                "desc_en": "Erythritol PCM, melting point 120°C, latent heat 340 J/g, for steel/chemical plant waste heat recovery, 2x water energy density.",
+            },
+            {
+                "title_zh": "建筑节能材料 — 外墙保温隔热",
+                "title_en": "Building Energy Efficiency — Exterior Wall Insulation",
+                "desc_zh": "石蜡/石膏复合相变板，导热系数0.21 W/(m·K)，利用昼夜温差循环储能释能，降低空调能耗30-50%。",
+                "desc_en": "Paraffin/gypsum PCM panel, TC 0.21 W/(m·K), day-night thermal cycling reduces AC energy use by 30-50%.",
             },
         ]
         
