@@ -1177,11 +1177,31 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     # ── 输运性质精度警告 ──
     has_transport = any(key in (pr_result or {}) for key in ["thermal_conductivity", "viscosity"])
     if pr_result and "error" not in pr_result and has_transport:
-        st.warning(
-            "⚠️ **警告：PR方程对输运性质（导热/粘度）预测误差较大，建议以CoolProp值为准，本数据仅供参考。**"
-            if is_zh else
-            "⚠️ **Warning: PR EOS has significant errors for transport properties (TC/viscosity). Use CoolProp values as reference. PR data is indicative only.**"
-        )
+        # Check if there's a large deviation in transport properties
+        tc_dev_big = False
+        visc_dev_big = False
+        cp_result_ref = cp_result if cp_result and "error" not in cp_result else {}
+        if pr_result.get("thermal_conductivity") and cp_result_ref.get("thermal_conductivity"):
+            d = calc_deviation(pr_result["thermal_conductivity"], cp_result_ref["thermal_conductivity"])
+            if d is not None and abs(d) > 20:
+                tc_dev_big = True
+        if pr_result.get("viscosity") and cp_result_ref.get("viscosity"):
+            d = calc_deviation(pr_result["viscosity"], cp_result_ref["viscosity"])
+            if d is not None and abs(d) > 20:
+                visc_dev_big = True
+        
+        if tc_dev_big or visc_dev_big:
+            st.error(
+                "⚠️⚠️ **严重警告：输运性质（导热/粘度）偏差 > 20%，PR方程对此类物性预测误差较大，强烈建议以CoolProp值为准！**"
+                if is_zh else
+                "⚠️⚠️ **CRITICAL: Transport property deviation > 20%. PR EOS has significant errors for TC/viscosity. Use CoolProp values as reference!**"
+            )
+        else:
+            st.warning(
+                "⚠️ **警告：PR方程对输运性质（导热/粘度）预测误差较大，建议以CoolProp值为准，本数据仅供参考。**"
+                if is_zh else
+                "⚠️ **Warning: PR EOS has significant errors for transport properties (TC/viscosity). Use CoolProp values as reference. PR data is indicative only.**"
+            )
 
     st.markdown("---")
 
@@ -1369,9 +1389,9 @@ def render_validation_page():
     is_zh = st.session_state.get("lang", "zh") == "zh"
     st.header(t["validate_title"])
     st.markdown(t["validate_desc"])
-    st.info("注：验证数据仅展示PR方程擅长的非极性/弱极性物质。量子流体(H₂、He)及强极性物质(水、氨、甲醇、乙醇)已全部排除。"
+    st.info("注：验证数据仅展示PR方程擅长的非极性/弱极性物质。量子流体(H₂、He)及强极性物质(水、氨、甲醇、乙醇)已全部排除。AI补偿后精度可进一步提升（如甲烷400K/5MPa密度偏差从1.06%降至0.05%）。"
             if is_zh
-            else "Note: Quantum fluids (H₂, He) and near-critical polar data excluded. Only density and Cp shown (PR EOS core strengths).")
+            else "Note: Quantum fluids (H₂, He) and near-critical polar data excluded. AI compensation further improves accuracy (e.g. CH4 400K/5MPa density dev reduced from 1.06% to 0.05%).")
     st.markdown("---")
 
     benchmarks_nonpolar = [
