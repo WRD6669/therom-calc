@@ -3680,8 +3680,9 @@ def render_optimization_page():
                 
                 fig = go.Figure()
                 seen = set(); count = 0
-                for r in results:
-                    if not r["feasible"]: continue
+                # 若无可行方案，回退显示所有结果
+                _curve_results = [r for r in results if r["feasible"]] or results
+                for r in _curve_results:
                     key = (r["matrix"], r["filler"])
                     if key in seen: continue
                     seen.add(key); count += 1
