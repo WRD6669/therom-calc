@@ -2754,6 +2754,15 @@ def predict_compensated(T, P_mpa, Tc, Pc_mpa, omega, rho_PR, Cp_PR):
         return result
     
     result["model_available"] = True
+    # 置信度评估：基于工况与训练数据覆盖度
+    _tr = T / max(Tc, 1)
+    _pr = P_mpa / max(Pc_mpa, 0.01)
+    if 0.5 < _tr < 2.0 and 0.1 < _pr < 5.0:
+        result["confidence"] = "high"  # 训练数据密集区
+    elif _tr > 3.0 or _pr > 10:
+        result["confidence"] = "low"   # 外推风险
+    else:
+        result["confidence"] = "medium"
     
     try:
         # 构造特征向量
