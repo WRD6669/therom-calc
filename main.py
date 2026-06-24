@@ -1637,6 +1637,274 @@ def render_main_page():
 
 
 
+def render_smart_optimize():
+    """智能优化页面：流体推荐 + 自动筛选 + 精度分析"""
+    t = LANG[st.session_state.get("lang", "zh")]
+    is_zh = st.session_state.get("lang", "zh") == "zh"
+
+    st.header("🧠 智能工质筛选" if is_zh else "🧠 Smart Fluid Screening")
+    st.markdown(
+        "根据目标工况自动推荐最优工质，批量扫描识别PR方程最佳精度区间。"
+        if is_zh
+        else "Automatically recommend optimal fluids for target conditions. Batch scan to identify best accuracy zones."
+    )
+    st.markdown("---")
+
+    # ==== 模式选择 ====
+    mode = st.radio(
+        "筛选模式" if is_zh else "Screening Mode",
+        options=[
+            "🎯 目标匹配推荐" if is_zh else "🎯 Target Matching",
+            "📊 批量精度扫描" if is_zh else "📊 Batch Accuracy Scan",
+        ],
+        horizontal=True,
+        key="smart_mode"
+    )
+
+    st.markdown("---")
+
+    # ================================================================
+    # 模式 A：目标匹配推荐（用户给定目标密度/Cp，推荐最接近的工质）
+    # ================================================================
+    if "目标匹配" in mode or "Target" in mode:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            target_T = st.number_input(
+                "目标温度 (K)" if is_zh else "Target T (K)",
+                min_value=200.0, max_value=600.0, value=350.0, step=10.0,
+                key="smart_target_T"
+            )
+        with col2:
+            target_P = st.number_input(
+                "目标压力 (MPa)" if is_zh else "Target P (MPa)",
+                min_value=0.1, max_value=10.0, value=1.0, step=0.1,
+                key="smart_target_P"
+            )
+        with col3:
+            target_prop = st.selectbox(
+                "目标物性" if is_zh else "Target Property",
+                options=["密度 (kg/m³)", "Cp (kJ/(kg·K))"],
+                key="smart_target_prop"
+            )
+
+        target_value = st.number_input(
+            ("期望" + target_prop + "值") if is_zh else ("Desired " + target_prop),
+            min_value=0.001, value=10.0 if "密度" in target_prop else 2.0,
+            step=0.1, format="%.3f", key="smart_target_val"
+        )
+
+        if st.button("🔍 开始推荐" if is_zh else "🔍 Start Recommendation", width="stretch", key="smart_go"):
+            with st.spinner("正在扫描全部20种工质..." if is_zh else "Scanning all 20 fluids..."):
+                target_key = "density" if "密度" in target_prop else "cp"
+                results = []
+                for fi in FLUID_DATABASE:
+                    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
+                    pr, cp, rw = run_calculation(target_T, target_P, fi)
+                    if "error" in str(pr):
+                        continue
+                    pr_val = pr.get(target_key)
+                    cp_val = cp.get(target_key) if "error" not in str(cp) else None
+
+                    # 计算与目标值的偏差（以 CoolProp 为基准，无 CoolProp 时用 PR）
+                    ref_val = cp_val if cp_val is not None else pr_val
+                    if ref_val is None or ref_val == 0:
+                        continue
+                    match_score = abs(pr_val - target_value) / max(abs(target_value), 0.001) * 100
+
+                    # 可信度：非极性 + 偏差小 = 高
+                    pr_dev = abs((pr_val - cp_val) / cp_val * 100) if cp_val else 50.0
+                    confidence = "⭐⭐⭐" if (polarity == "low" and pr_dev < 10) else ("⭐⭐" if pr_dev < 30 else "⭐")
+
+                    results.append({
+                        "物质" if is_zh else "Fluid": name_zh if is_zh else name_en,
+                        "PR值": f"{pr_val:.3f}",
+                        "CoolProp值": f"{cp_val:.3f}" if cp_val else "N/A",
+                        "匹配偏差(%)": f"{match_score:.1f}",
+                        "PR精度(%)": f"{pr_dev:.1f}" if cp_val else "N/A",
+                        "可信度": confidence,
+                        "_score": match_score,
+                        "_polarity": polarity,
+                    })
+
+                if results:
+                    # 按匹配偏差排序
+                    results.sort(key=lambda x: x["_score"] + (100 if x["_polarity"] == "high" else 0))
+                    df = pd.DataFrame(results).drop(columns=["_score", "_polarity"])
+                    st.subheader("📋 推荐结果（按匹配度排序）" if is_zh else "📋 Recommendations (by match score)")
+                    st.dataframe(df, width="stretch", height=400)
+
+                    best = results[0]
+                    st.success(
+                        f"🎯 最佳推荐：**{best['物质' if is_zh else 'Fluid']}**"
+                        f" | 匹配偏差 {best['匹配偏差(%)']}%"
+                        f" | 可信度 {best['可信度']}"
+                    )
+                else:
+                    st.warning("未找到可用的工质推荐。" if is_zh else "No suitable fluid found.")
+
+    # ================================================================
+    # 模式 B：批量精度扫描（对所有物质扫一条等温/等压线，识别PR最佳精度区）
+    # ================================================================
+    else:
+        scan_type = st.radio(
+            "扫描类型" if is_zh else "Scan Type",
+            options=["等温扫描 (固定T)" if is_zh else "Isothermal (fixed T)",
+                     "等压扫描 (固定P)" if is_zh else "Isobaric (fixed P)"],
+            horizontal=True, key="scan_type"
+        )
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if "等温" in scan_type or "Isothermal" in scan_type:
+                scan_T = st.number_input("温度 (K)" if is_zh else "Temperature (K)", 200.0, 600.0, 350.0, 10.0, key="scan_T")
+                P_start = st.number_input("压力下限 (MPa)" if is_zh else "P min (MPa)", 0.1, 10.0, 0.1, 0.1, key="scan_P_lo")
+                P_end = st.number_input("压力上限 (MPa)" if is_zh else "P max (MPa)", 0.1, 10.0, 5.0, 0.1, key="scan_P_hi")
+            else:
+                scan_P = st.number_input("压力 (MPa)" if is_zh else "Pressure (MPa)", 0.1, 10.0, 1.0, 0.1, key="scan_P")
+                T_start = st.number_input("温度下限 (K)" if is_zh else "T min (K)", 200.0, 600.0, 250.0, 10.0, key="scan_T_lo")
+                T_end = st.number_input("温度上限 (K)" if is_zh else "T max (K)", 200.0, 600.0, 500.0, 10.0, key="scan_T_hi")
+        with col_b:
+            selected_fluids = st.multiselect(
+                "选择工质（不选=全部）" if is_zh else "Select fluids (none=all)",
+                options=[fi[0] for fi in FLUID_DATABASE],
+                default=[], key="scan_fluids"
+            )
+            scan_points = st.number_input("扫描点数" if is_zh else "Scan points", 5, 50, 20, 5, key="scan_pts")
+
+        if st.button("📊 开始批量扫描" if is_zh else "📊 Start Batch Scan", width="stretch", key="batch_go"):
+            fluids_to_scan = [fi for fi in FLUID_DATABASE if not selected_fluids or fi[0] in selected_fluids]
+
+            if "等温" in scan_type or "Isothermal" in scan_type:
+                P_range = np.linspace(P_start, P_end, scan_points)
+                T_val = scan_T
+                x_label = "压力 (MPa)" if is_zh else "Pressure (MPa)"
+                x_vals = P_range
+            else:
+                T_range = np.linspace(T_start, T_end, scan_points)
+                P_val = scan_P * 1e6
+                x_label = "温度 (K)" if is_zh else "Temperature (K)"
+                x_vals = T_range
+
+            with st.spinner(f"正在扫描 {len(fluids_to_scan)} 种工质..." if is_zh else f"Scanning {len(fluids_to_scan)} fluids..."):
+                import plotly.graph_objects as go
+                from plotly.subplots import make_subplots
+
+                fig = make_subplots(
+                    rows=2, cols=2,
+                    subplot_titles=("密度偏差 (%)", "Cp偏差 (%)", "密度 vs 基准", "PR精度评级"),
+                    vertical_spacing=0.15, horizontal_spacing=0.12,
+                )
+
+                summary_rows = []
+                colors = ["#7c3aed", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+                          "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4",
+                          "#a855f7", "#0ea5e9", "#22c55e", "#eab308", "#f43f5e", "#3b82f6",
+                          "#10b981", "#8b5cf6"]
+
+                for fi_idx, fi in enumerate(fluids_to_scan):
+                    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
+                    color = colors[fi_idx % len(colors)]
+                    show_leg = fi_idx < 6  # limit legend
+
+                    density_devs = []
+                    cp_devs = []
+                    for x_idx, x_val in enumerate(x_vals):
+                        if "等温" in scan_type or "Isothermal" in scan_type:
+                            T = T_val; P = x_val * 1e6
+                        else:
+                            T = x_val; P = P_val
+                        pr, cp, rw = run_calculation(T, P / 1e6, fi)
+                        if "error" in str(pr) or "error" in str(cp):
+                            density_devs.append(np.nan); cp_devs.append(np.nan)
+                        else:
+                            d_dev = (pr["density"] - cp["density"]) / cp["density"] * 100 if cp["density"] != 0 else np.nan
+                            c_dev = (pr["cp"] - cp["cp"]) / cp["cp"] * 100 if cp.get("cp", 0) != 0 else np.nan
+                            density_devs.append(d_dev); cp_devs.append(c_dev)
+
+                    # 图1：密度偏差
+                    fig.add_trace(go.Scatter(x=x_vals, y=density_devs, mode="lines+markers",
+                        name=name_zh, line=dict(color=color, width=2), marker=dict(size=5),
+                        legendgroup=name_zh, showlegend=show_leg), row=1, col=1)
+                    # 图2：Cp偏差
+                    fig.add_trace(go.Scatter(x=x_vals, y=cp_devs, mode="lines+markers",
+                        name=name_zh, line=dict(color=color, width=2, dash="dot"), marker=dict(size=4),
+                        legendgroup=name_zh, showlegend=False), row=1, col=2)
+
+                    # 汇总统计
+                    valid_d = [d for d in density_devs if not np.isnan(d)]
+                    valid_c = [c for c in cp_devs if not np.isnan(c)]
+                    avg_d_dev = np.mean(np.abs(valid_d)) if valid_d else 999
+                    avg_c_dev = np.mean(np.abs(valid_c)) if valid_c else 999
+                    max_d_dev = np.max(np.abs(valid_d)) if valid_d else 999
+
+                    # 精度评级
+                    if avg_d_dev < 5:
+                        grade = "🏆 A级"; grade_color = "#10b981"
+                    elif avg_d_dev < 15:
+                        grade = "✅ B级"; grade_color = "#84cc16"
+                    elif avg_d_dev < 30:
+                        grade = "⚠️ C级"; grade_color = "#f59e0b"
+                    else:
+                        grade = "❌ D级"; grade_color = "#ef4444"
+
+                    summary_rows.append({
+                        "工质" if is_zh else "Fluid": name_zh if is_zh else name_en,
+                        "平均密度偏差(%)": f"{avg_d_dev:.1f}",
+                        "平均Cp偏差(%)": f"{avg_c_dev:.1f}",
+                        "最大密度偏差(%)": f"{max_d_dev:.1f}",
+                        "精度评级": grade,
+                        "_avg": avg_d_dev,
+                        "_color": grade_color,
+                        "_polarity": polarity,
+                    })
+
+                    # 图4：精度评级散点
+                    fig.add_trace(go.Scatter(
+                        x=[fi_idx + 1], y=[avg_d_dev],
+                        mode="markers+text",
+                        marker=dict(size=14, color=grade_color, symbol="diamond"),
+                        text=[grade.split()[0]], textposition="top center",
+                        textfont=dict(size=9, color=grade_color),
+                        name=name_zh, showlegend=False,
+                        legendgroup=name_zh,
+                    ), row=2, col=2)
+
+                # 精度评级参考线
+                for level, y, c in [("A级", 5, "#10b981"), ("B级", 15, "#84cc16"), ("C级", 30, "#f59e0b")]:
+                    fig.add_hline(y=y, line_dash="dash", line_color=c, opacity=0.4, row=2, col=2)
+
+                fig.update_xaxes(title_text=x_label, row=1, col=1)
+                fig.update_xaxes(title_text=x_label, row=1, col=2)
+                fig.update_xaxes(title_text="工质编号" if is_zh else "Fluid Index", row=2, col=2)
+                fig.update_yaxes(title_text="偏差 (%)", row=1, col=1)
+                fig.update_yaxes(title_text="偏差 (%)", row=1, col=2)
+                fig.update_yaxes(title_text="平均密度偏差 (%)" if is_zh else "Avg Density Dev (%)", row=2, col=2)
+                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=1)
+                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=2)
+
+                fig.update_layout(height=750, hovermode="x unified",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5),
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+
+                st.plotly_chart(fig, width="stretch")
+
+                # 汇总表
+                if summary_rows:
+                    summary_rows.sort(key=lambda x: x["_avg"] + (50 if x["_polarity"] == "high" else 0))
+                    df_summary = pd.DataFrame(summary_rows).drop(columns=["_avg", "_color", "_polarity"])
+
+                    # 颜色高亮
+                    def highlight_grade(val):
+                        for row in summary_rows:
+                            if row["精度评级"] == val:
+                                return f"color: {row['_color']}; font-weight: bold"
+                        return ""
+                    styled = df_summary.style.map(highlight_grade, subset=["精度评级"])
+                    st.subheader("📊 精度汇总排名" if is_zh else "📊 Accuracy Summary")
+                    st.dataframe(styled, width="stretch", height=400)
+
+
 
 def main():
     """Main Streamlit entry point with multi-page navigation."""
@@ -1659,7 +1927,12 @@ def main():
         title="🔬 模型验证" if lang == "zh" else "🔬 Validation",
         url_path="validate"
     )
-    pg = st.navigation({"pages": [pg_main, pg_val]})
+    pg_opt = st.Page(
+        render_smart_optimize,
+        title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen",
+        url_path="optimize"
+    )
+    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt]})
     pg.run()
 if __name__ == "__main__":
     main()
