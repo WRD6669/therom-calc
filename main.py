@@ -132,6 +132,12 @@ LANG = {
         "ai_max_depth": "最大深度",
         "ai_train_samples": "训练样本数",
         "ai_data_generated": "📊 数据集已生成",
+        "ai_preset_label": "📦 内置新材料预置库",
+        "ai_preset_placeholder": "-- 选择预置材料自动填充 --",
+        "ai_preset_acetic": "🧪 乙酸（醋酸） | Tc=592K Pc=5.79MPa ω=0.467",
+        "ai_preset_r245fa": "🧪 R245fa | Tc=427K Pc=3.65MPa ω=0.372",
+        "ai_preset_il": "🧪 离子液体 [BMIM][PF6] | Tc=860K Pc=2.40MPa ω=0.79",
+        "ai_preset_filled": "✅ 已填充 {}，请点击「开始预测」",
         "ai_data_samples": "样本数",
         "ai_data_features": "特征",
         "ai_data_targets": "目标",
@@ -242,6 +248,12 @@ LANG = {
         "ai_max_depth": "Max Depth",
         "ai_train_samples": "Training Samples",
         "ai_data_generated": "📊 Dataset Generated",
+        "ai_preset_label": "📦 Preset Material Library",
+        "ai_preset_placeholder": "-- Select a preset material --",
+        "ai_preset_acetic": "🧪 Acetic Acid | Tc=592K Pc=5.79MPa ω=0.467",
+        "ai_preset_r245fa": "🧪 R245fa | Tc=427K Pc=3.65MPa ω=0.372",
+        "ai_preset_il": "🧪 [BMIM][PF6] Ionic Liquid | Tc=860K Pc=2.40MPa ω=0.79",
+        "ai_preset_filled": "✅ Filled {}, click Predict",
         "ai_data_samples": "Samples",
         "ai_data_features": "Features",
         "ai_data_targets": "Targets",
@@ -929,6 +941,15 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
             '</div></div>')
         st.markdown(card, unsafe_allow_html=True)
 
+    # ── 输运性质精度警告 ──
+    has_transport = any(key in (pr_result or {}) for key in ["thermal_conductivity", "viscosity"])
+    if pr_result and "error" not in pr_result and has_transport:
+        st.warning(
+            "⚠️ **警告：PR方程对输运性质（导热/粘度）预测误差较大，建议以CoolProp值为准，本数据仅供参考。**"
+            if is_zh else
+            "⚠️ **Warning: PR EOS has significant errors for transport properties (TC/viscosity). Use CoolProp values as reference. PR data is indicative only.**"
+        )
+
     st.markdown("---")
 
     # Deviation explanation
@@ -1345,23 +1366,44 @@ def render_smart_optimize():
                 target_key = "density" if "密度" in target_prop else "cp"
                 results = []
                 for fi in FLUID_DATABASE:
-                    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
-                    pr, cp, rw = run_calculation(target_T, target_P, fi)
-                    if "error" in str(pr): continue
-                    pr_val = pr.get(target_key)
-                    cp_val = cp.get(target_key) if "error" not in str(cp) else None
-                    ref_val = cp_val if cp_val is not None else pr_val
-                    if ref_val is None or ref_val == 0: continue
-                    match_score = abs(pr_val - target_value) / max(abs(target_value), 0.001) * 100
-                    pr_dev = abs((pr_val - cp_val) / cp_val * 100) if cp_val else 50.0
-                    confidence = "⭐⭐⭐" if (polarity == "low" and pr_dev < 10) else ("⭐⭐" if pr_dev < 30 else "⭐")
-                    results.append({
-                        "物质" if is_zh else "Fluid": name_zh if is_zh else name_en,
-                        "PR值": f"{pr_val:.3f}", "CoolProp值": f"{cp_val:.3f}" if cp_val else "N/A",
-                        "目标匹配度(%)" if is_zh else "Target Match(%)": f"{match_score:.1f}",
-                        "PR一致性(%)" if is_zh else "PR Consistency(%)": f"{pr_dev:.1f}" if cp_val else "N/A",
-                        "可信度": confidence, "_score": match_score, "_polarity": polarity,
-                    })
+                    try:
+                        name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
+                        pr, cp, rw = run_calculation(target_T, target_P, fi)
+                        if "error" in str(pr): continue
+                        pr_val = pr.get(target_key)
+                        if pr_val is None or pr_val == 0: continue
+                        # CoolProp值处理：无基准物质(cp_name="")或查询失败均视为无基准
+                        cp_available = cp_name and cp and "error" not in str(cp)
+                        cp_val = cp.get(target_key) if cp_available else None
+                        # 有效性检查（排除None/NaN/零/负值/字符串）
+                        cp_valid = (cp_val is not None and isinstance(cp_val, (int, float))
+                                    and not np.isnan(cp_val) and cp_val > 0)
+                        ref_val = cp_val if cp_valid else pr_val
+                        if ref_val is None or ref_val == 0: continue
+                        # 目标匹配度
+                        match_score = abs(pr_val - target_value) / max(abs(target_value), 0.001) * 100
+                        # PR一致性：仅当CoolProp有效时计算
+                        if cp_valid:
+                            pr_dev = abs((pr_val - cp_val) / cp_val * 100)
+                            pr_dev_str = f"{pr_dev:.1f}"
+                        else:
+                            pr_dev = None
+                            pr_dev_str = "--" if is_zh else "--"
+                        # 可信度
+                        if cp_valid:
+                            confidence = "⭐⭐⭐" if (polarity == "low" and pr_dev < 10) else ("⭐⭐" if pr_dev < 30 else "⭐")
+                        else:
+                            confidence = "🧪" if is_zh else "🧪"
+                        results.append({
+                            "物质" if is_zh else "Fluid": name_zh if is_zh else name_en,
+                            "PR值": f"{pr_val:.3f}",
+                            "CoolProp值": f"{cp_val:.3f}" if cp_valid else ("无基准" if is_zh else "No Ref"),
+                            "目标匹配度(%)" if is_zh else "Target Match(%)": f"{match_score:.1f}",
+                            "PR一致性(%)" if is_zh else "PR Consistency(%)": pr_dev_str,
+                            "可信度": confidence, "_score": match_score, "_polarity": polarity,
+                        })
+                    except Exception:
+                        continue
                 if results:
                     results.sort(key=lambda x: x["_score"] + (100 if x["_polarity"] == "high" else 0))
                     df = pd.DataFrame(results).drop(columns=["_score", "_polarity"])
@@ -1892,34 +1934,69 @@ def render_ai_prediction():
     # --- Section 2: Unknown Material Explorer ---
     st.subheader(t["ai_unknown_mode"])
     st.markdown(t["ai_unknown_desc"])
-    
+
+    # ── 内置新材料预置库 ──
+    AI_PRESETS = {
+        "acetic": {
+            "label": t.get("ai_preset_acetic", "Acetic Acid"),
+            "Tc": 591.95, "Pc": 5.786, "omega": 0.467,
+            "desc_zh": "乙酸（醋酸）", "desc_en": "Acetic Acid",
+        },
+        "r245fa": {
+            "label": t.get("ai_preset_r245fa", "R245fa"),
+            "Tc": 427.20, "Pc": 3.651, "omega": 0.372,
+            "desc_zh": "R245fa", "desc_en": "R245fa",
+        },
+        "bmim_pf6": {
+            "label": t.get("ai_preset_il", "[BMIM][PF6]"),
+            "Tc": 860.0, "Pc": 2.40, "omega": 0.79,
+            "desc_zh": "离子液体 [BMIM][PF6]", "desc_en": "[BMIM][PF6] Ionic Liquid",
+        },
+    }
+
+    preset_options = [t.get("ai_preset_placeholder", "-- Select --")] + [v["label"] for v in AI_PRESETS.values()]
+    preset_choice = st.selectbox(t["ai_preset_label"], options=preset_options, key="ai_preset")
+
+    # Auto-fill on preset selection
+    if preset_choice != preset_options[0]:
+        for key, val in AI_PRESETS.items():
+            if val["label"] == preset_choice:
+                st.session_state["ai_tc"] = val["Tc"]
+                st.session_state["ai_pc"] = val["Pc"]
+                st.session_state["ai_omega"] = val["omega"]
+                st.info(t.get("ai_preset_filled", "Filled").format(
+                    val["desc_zh"] if is_zh else val["desc_en"]))
+                break
+
     col_a, col_b, col_c, col_d, col_e = st.columns(5)
     with col_a:
-        tc_input = st.number_input(t["ai_tc_input"], 50.0, 2000.0, 400.0, 10.0, key="ai_tc")
+        tc_input = st.number_input(t["ai_tc_input"], 50.0, 2000.0,
+            value=st.session_state.get("ai_tc", 400.0), step=10.0, key="ai_tc")
     with col_b:
-        pc_input = st.number_input(t["ai_pc_input"], 0.1, 100.0, 5.0, 0.1, key="ai_pc")
+        pc_input = st.number_input(t["ai_pc_input"], 0.1, 100.0,
+            value=st.session_state.get("ai_pc", 5.0), step=0.1, key="ai_pc")
     with col_c:
-        omega_input = st.number_input(t["ai_omega_input"], -0.5, 2.0, 0.1, 0.01, key="ai_omega")
+        omega_input = st.number_input(t["ai_omega_input"], -0.5, 2.0,
+            value=st.session_state.get("ai_omega", 0.1), step=0.01, key="ai_omega")
     with col_d:
         t_input = st.number_input(t["temperature"] + " (K)" if is_zh else "T (K)",
             200.0, 1000.0, 350.0, 10.0, key="ai_T")
     with col_e:
         p_input = st.number_input(t["pressure"] + " (MPa)" if is_zh else "P (MPa)",
             0.1, 20.0, 1.0, 0.1, key="ai_P")
-    
+
     predict_clicked = st.button(t["ai_predict_btn"], width="stretch", key="ai_predict_btn")
-    
+
     if predict_clicked:
         if not st.session_state.get("ai_trained"):
             st.warning(t["ai_no_model"])
         else:
             mi = st.session_state["ai_model"]
-            
+
             # AI prediction
             dens_ai, cp_ai = _predict_with_model(mi, tc_input, pc_input, omega_input, t_input, p_input)
-            
+
             # Also try PR equation for comparison (build synthetic fluid_info)
-            # Use dummy cp_coeffs (won't affect density calc)
             synthetic_fi = ("未知材料" if is_zh else "Unknown",
                            "Unknown", 100.0, tc_input, pc_input, omega_input,
                            [20.0, 0.05, 0.0, 0.0], "Water", "low")
@@ -1931,11 +2008,11 @@ def render_ai_prediction():
             except Exception:
                 pr_dens = None
                 pr_cp_val = None
-            
+
             # Display results
             st.markdown("---")
             st.subheader(t["ai_predict_header"])
-            
+
             rc1, rc2, rc3 = st.columns(3)
             with rc1:
                 st.metric(t["ai_pred_density"] + " (kg/m³)", f"{dens_ai:.3f}")
@@ -1946,7 +2023,7 @@ def render_ai_prediction():
                     dev_d = (dens_ai - pr_dens) / pr_dens * 100 if pr_dens > 0 else None
                     dev_str = f"{dev_d:+.2f}%" if dev_d is not None else "N/A"
                     st.metric(t["ai_dev_density"], dev_str)
-            
+
             # Comparison table
             if pr_dens is not None:
                 st.markdown("---")
@@ -1964,7 +2041,7 @@ def render_ai_prediction():
                     st.markdown(f"**{t['ai_pr_cp']}**")
                     cp_disp = pr_cp_val if pr_cp_val else 0
                     st.markdown(f'<span style="font-size:1.3rem;font-weight:700;color:#67e8f9;">{cp_disp:.4f}</span>', unsafe_allow_html=True)
-    
+
     # Footer
     st.markdown("---")
     st.caption(
