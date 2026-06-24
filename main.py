@@ -1882,6 +1882,7 @@ def render_ai_prediction():
             "label": t.get("ai_preset_acetic", "Acetic Acid"),
             "Tc": 591.95, "Pc": 5.786, "omega": 0.467,
             "desc_zh": "乙酸（醋酸）", "desc_en": "Acetic Acid",
+            "polar": True,
         },
         "r245fa": {
             "label": t.get("ai_preset_r245fa", "R245fa"),
@@ -1892,6 +1893,7 @@ def render_ai_prediction():
             "label": t.get("ai_preset_il", "[BMIM][PF6]"),
             "Tc": 860.0, "Pc": 2.40, "omega": 0.79,
             "desc_zh": "离子液体 [BMIM][PF6]", "desc_en": "[BMIM][PF6] Ionic Liquid",
+            "polar": True,
         },
     }
 
@@ -1942,6 +1944,14 @@ def render_ai_prediction():
             st.markdown("---")
             st.subheader(t["ai_predict_header"])
 
+            # 强极性物质警告（omega > 0.4）
+            if omega_input > 0.4:
+                st.warning(
+                    "⚠️ 提示：当前物质偏心因子ω = {:.3f} > 0.4，属于强极性物质。PR状态方程对此类物质精度有限，AI预测基于KNN插值，结果仅供参考，不建议用于精确工程设计。".format(omega_input)
+                    if is_zh else
+                    "⚠️ Note: omega = {:.3f} > 0.4, highly polar. PR EOS has limited accuracy. KNN prediction for reference only, not recommended for precise engineering design.".format(omega_input)
+                )
+
             # 主结果卡片
             st.markdown(
                 '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);'
@@ -1988,6 +1998,15 @@ def render_ai_prediction():
                     label_pr_cp = "PR方程 Cp" if is_zh else "PR Cp"
                     st.metric(label_pr_cp + " (kJ/(kg·K))", f"{pr_cp_val:.4f}" if pr_cp_val else "N/A",
                              delta=f"{dev_c:+.1f}%" if dev_c is not None else None)
+
+                # 偏差过大警告（密度偏差>30%时高亮提示）
+                if dev_d is not None and abs(dev_d) > 30:
+                    extra = "该物质PR方程精度有限，" if omega_input > 0.4 else ""
+                    st.warning(
+                        f"⚠️ PR与AI预测密度偏差 {abs(dev_d):.1f}%，差异较大。{extra}建议以实验值为准。"
+                        if is_zh else
+                        f"⚠️ PR vs AI density deviation {abs(dev_d):.1f}% — large discrepancy. {extra}Experimental data recommended."
+                    )
 
     st.markdown("---")
     st.caption(
