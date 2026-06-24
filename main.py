@@ -3636,12 +3636,14 @@ def render_optimization_page():
                         norm(all_dev, reverse=True),
                     ]
                     
+                    # rgba for Plotly Scatterpolar fillcolor
+                    _radar_rgba = ["rgba(255,215,0,0.27)", "rgba(192,192,192,0.27)", "rgba(205,127,50,0.27)"]
                     for i in range(3):
                         fig_radar.add_trace(go.Scatterpolar(
                             r=[radar_vals[0][i], radar_vals[1][i], radar_vals[2][i], radar_vals[3][i]],
                             theta=radar_cats, fill='toself', name=plan_names[i],
                             line=dict(color=colors_bar[i], width=2),
-                            fillcolor=colors_bar[i] + "22",
+                            fillcolor=_radar_rgba[i],
                         ))
                     
                     fig_radar.update_layout(
@@ -3857,13 +3859,15 @@ def render_materials_database():
             
             fig_radar = go.Figure()
             colors_r = ["#7c3aed", "#06b6d4", "#10b981"]
+            # rgba for Plotly fillcolor: (hex has no alpha channel in Scatterpolar)
+            fill_rgba = ["rgba(124,58,237,0.27)", "rgba(6,182,212,0.27)", "rgba(16,185,129,0.27)"]
             for i, m in enumerate(selected_data):
                 name = m["名称"] if is_zh else m.get("name_en", m["名称"])
                 fig_radar.add_trace(go.Scatterpolar(
                     r=[norm_vals["λ"][i], norm_vals["Cp"][i], norm_vals["α"][i], norm_vals["ρ"][i]],
                     theta=cats, fill='toself', name=name,
                     line=dict(color=colors_r[i], width=2),
-                    fillcolor=colors_r[i] + "44",  # rgba-style opacity, Plotly accepts hex+alpha
+                    fillcolor=fill_rgba[i],
                 ))
             
             fig_radar.update_layout(
