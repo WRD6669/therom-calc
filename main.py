@@ -3618,13 +3618,18 @@ def render_composite_page():
     with col3:
         vol_frac_pct = st.slider(
             "填料体积分数 (%)" if is_zh else "Filler Volume Fraction (%)",
-            min_value=0, max_value=60, value=20, step=1,
-            format="%d%%", key="comp_vf"
+            min_value=0, max_value=70, value=20, step=1,
+            format="%d%%", key="comp_vf",
+            help="0%为纯基体，70%为高填充。注：超过60%加工困难，超过70%通常不可行。"
+            if is_zh else
+            "0% = pure matrix, 70% = highly filled. Note: >60% is hard to process, >70% usually infeasible."
         )
-        vol_frac = vol_frac_pct / 100.0  # convert % to decimal 0.0-0.6
+        vol_frac = vol_frac_pct / 100.0
     with col4:
         st.metric("填料体积分数" if is_zh else "Filler VF", f"{vol_frac_pct}%")
         st.metric("基体体积分数" if is_zh else "Matrix VF", f"{100 - vol_frac_pct}%")
+        if vol_frac_pct > 60:
+            st.warning("⚠️ 填充率较高，加工困难" if is_zh else "⚠️ High loading, hard to process")
     
     st.markdown("---")
     
