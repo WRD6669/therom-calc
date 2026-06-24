@@ -2478,7 +2478,7 @@ def train_compensation_models(data_csv=None):
         "n_samples": len(df),
         "feature_cols": feature_cols,
     }
-    joblib.dump(model_data, os.path.join(MODEL_DIR, "compensation_models.pkl"))
+    joblib.dump(model_data, os.path.join(MODEL_DIR, "compensation_models.pkl"), compress=9)
     print(f"模型已保存至: {MODEL_DIR}/compensation_models.pkl")
     print(f"  训练样本数: {len(df)}")
     print(f"  密度偏差 R²: {r2_rho:.4f}")
