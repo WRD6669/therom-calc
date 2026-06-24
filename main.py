@@ -1068,12 +1068,20 @@ def _show_ai_compensation(pr_result, cp_result, fluid_info, P_pa, t):
     rho_ci_w = ai_res.get("rho_ci_width")
     cp_ci_w = ai_res.get("cp_ci_width")
     if rho_ci_w is not None and cp_ci_w is not None:
-        ci_text = ""
+        ci_text = "📊 95%置信区间: "
+        if rho_ci_w > 0:
+            ci_text += f"密度宽度 {rho_ci_w:.1f}%"
+        if cp_ci_w > 0:
+            ci_text += f"{' | ' if rho_ci_w > 0 else ''}Cp宽度 {cp_ci_w:.1f}%"
         if rho_ci_w < 10 and cp_ci_w < 10:
-            ci_text = f"📊 95%置信区间: 密度宽度 {rho_ci_w:.1f}%, Cp宽度 {cp_ci_w:.1f}%"
             st.caption(ci_text)
         else:
             wider = "密度" if (rho_ci_w or 0) > (cp_ci_w or 0) else "Cp"
+            st.warning(
+                f"⚠️ 当前预测不确定性较大（{ci_text}）。可能原因：①工况接近训练数据边界；②该物质训练样本较少；③多相区附近。建议结合实验验证或使用更精确模型。"
+                if is_zh else
+                f"⚠️ High prediction uncertainty ({ci_text}). Possible causes: ① Near training boundary; ② Few training samples for this fluid; ③ Near multi-phase region. Consider experimental validation or more precise models."
+            )
             st.warning(
                 f"⚠️ 当前预测不确定性较大（密度CI宽度 {rho_ci_w:.1f}%, CpCI宽度 {cp_ci_w:.1f}%）。可能原因：①工况接近训练数据边界；②该物质训练样本较少；③多相区附近。建议结合实验验证或使用更精确模型。"
                 if is_zh else
@@ -1370,8 +1378,8 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
 
     pdf = PDF()
     if use_cjk:
-        pdf.add_font("cjk", "", CJK_FONT_PATH, uni=True)
-        pdf.add_font("cjk", "B", r"C:\Windows\Fonts\msyhbd.ttc", uni=True)
+        pdf.add_font("cjk", "", CJK_FONT_PATH)
+        pdf.add_font("cjk", "B", r"C:\Windows\Fonts\msyhbd.ttc")
     pdf.alias_nb_pages()
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
@@ -1682,7 +1690,7 @@ def render_validation_page():
     def color_dev(val):
         try:
             v = float(str(val).replace("%", "").replace("+", ""))
-        except:
+        except Exception:
             return ""
         if abs(v) < 5:
             return "color: #10b981; font-weight: bold"
@@ -1696,7 +1704,7 @@ def render_validation_page():
             return "color: rgba(255,255,255,0.3)"
         try:
             v = float(str(val).replace("%", "").replace("+", ""))
-        except:
+        except Exception:
             return "color: rgba(255,255,255,0.3)"
         if abs(v) < 5:
             return "color: #10b981; font-weight: bold"
@@ -1737,7 +1745,8 @@ def render_validation_page():
         )
     with col_exp2:
         if st.button(t["validate_export_pdf"], key="gen_validation_pdf"):
-            report_md = generate_tech_report(st.session_state.get("lang", "zh"))
+            with st.spinner("正在生成报告..." if is_zh else "Generating report..."):
+                report_md = generate_tech_report(st.session_state.get("lang", "zh"))
             st.download_button(
                 "💾 下载报告 (Markdown)" if is_zh else "💾 Download Report (Markdown)",
                 data=report_md,
@@ -1913,16 +1922,8 @@ def render_main_page():
                     "lambda": st.session_state.get("pr_result", {}).get("thermal_conductivity"),
                     "alpha": st.session_state.get("pr_result", {}).get("alpha"),
                 }
-                st.success(
-                    "✅ 已记录该物质参数！请切换到「🧩 复合材料」页面使用。"
-                    if st.session_state["lang"]=="zh" else
-                    "✅ Parameters saved! Switch to 「🧩 Composite」page to use."
-                )
-                st.info(
-                    "💡 提示：复合材料页面支持聚合物基体+无机填料混合预测。"
-                    if st.session_state["lang"]=="zh" else
-                    "💡 Tip: Composite page supports polymer matrix + inorganic filler mixing prediction."
-                )
+                st.session_state["_redirect_to"] = "composite"
+                st.rerun()
     
     st.caption("🧪 ThermoCalc v2.0 | 基础组分物性数据库 | Powered by Peng-Robinson EOS + CoolProp")
 
@@ -2071,7 +2072,7 @@ def render_smart_optimize():
                         def gray_out_high_match(row):
                             try:
                                 match_val = float(str(row["目标匹配度(%)" if is_zh else "Target Match(%)"]))
-                            except:
+                            except Exception:
                                 return [""] * len(row)
                             if match_val > 20:
                                 return ["background-color: rgba(100,100,100,0.15); color: rgba(255,255,255,0.35)"] * len(row)
@@ -2179,7 +2180,8 @@ def render_smart_optimize():
         st.markdown("---")
 
         if st.button("📊 开始批量扫描" if is_zh else "📊 Start Batch Scan", width="stretch", key="batch_go"):
-            fluids_to_scan = [fi for fi in FLUID_DATABASE if not selected_fluids or fi[0] in selected_fluids]
+            with st.spinner("正在批量扫描..." if is_zh else "Batch scanning..."):
+                fluids_to_scan = [fi for fi in FLUID_DATABASE if not selected_fluids or fi[0] in selected_fluids]
             # 额外过滤：量子流体(H2, He)和极性标记为high但无CoolProp的物质排除
             _FORCE_EXCLUDE_EN = {"Hydrogen", "Helium"}
             fluids_to_scan = [fi for fi in fluids_to_scan if fi[1] not in _FORCE_EXCLUDE_EN]
@@ -3212,36 +3214,6 @@ def predict_compensated(T, P_mpa, Tc, Pc_mpa, omega, rho_PR, Cp_PR):
         rho_dev = float(models["rho_model"].predict(X_norm)[0])
         cp_dev = float(models["cp_model"].predict(X_norm)[0])
         
-        # ── 95%置信区间（基于RF各树预测值的分位数）──
-        try:
-            rho_tree_preds = np.array([tree.predict(X_norm)[0] for tree in models["rho_model"].estimators_])
-            cp_tree_preds = np.array([tree.predict(X_norm)[0] for tree in models["cp_model"].estimators_])
-            rho_ci_lower = float(np.percentile(rho_tree_preds, 2.5))
-            rho_ci_upper = float(np.percentile(rho_tree_preds, 97.5))
-            cp_ci_lower = float(np.percentile(cp_tree_preds, 2.5))
-            cp_ci_upper = float(np.percentile(cp_tree_preds, 97.5))
-            # 转换为密度/Cp的绝对值置信区间
-            denom_ci = 1.0 + rho_dev / 100.0
-            if denom_ci > 0.01:
-                result["rho_ci_lower"] = float(rho_PR / (1.0 + rho_ci_upper / 100.0)) if rho_ci_upper > -99 else rho_PR
-                result["rho_ci_upper"] = float(rho_PR / (1.0 + rho_ci_lower / 100.0)) if rho_ci_lower > -99 else rho_PR
-            else:
-                result["rho_ci_lower"] = rho_PR
-                result["rho_ci_upper"] = rho_PR
-            denom_cp_ci = 1.0 + cp_dev / 100.0
-            if denom_cp_ci > 0.01:
-                result["cp_ci_lower"] = float(Cp_PR / (1.0 + cp_ci_upper / 100.0)) if cp_ci_upper > -99 else Cp_PR
-                result["cp_ci_upper"] = float(Cp_PR / (1.0 + cp_ci_lower / 100.0)) if cp_ci_lower > -99 else Cp_PR
-            else:
-                result["cp_ci_lower"] = Cp_PR
-                result["cp_ci_upper"] = Cp_PR
-            # CI宽度（相对于中心值的百分比）
-            if result["rho_AI"] > 0:
-                result["rho_ci_width"] = float((result["rho_ci_upper"] - result["rho_ci_lower"]) / result["rho_AI"] * 100)
-            if result["Cp_AI"] > 0:
-                result["cp_ci_width"] = float((result["cp_ci_upper"] - result["cp_ci_lower"]) / result["Cp_AI"] * 100)
-        except Exception:
-            pass  # CI计算失败时静默跳过
         result["rho_dev_pred"] = rho_dev
         result["Cp_dev_pred"] = cp_dev
         
@@ -3269,6 +3241,46 @@ def predict_compensated(T, P_mpa, Tc, Pc_mpa, omega, rho_PR, Cp_PR):
                 result["Cp_AI"] = float(Cp_PR / denom_cp)
             else:
                 result["Cp_AI"] = Cp_PR
+
+        # ── 95%置信区间（基于RF各树预测值的分位数，在最终AI值确定后计算）──
+        try:
+            rho_tree_preds = np.array([tree.predict(X_norm)[0] for tree in models["rho_model"].estimators_])
+            cp_tree_preds = np.array([tree.predict(X_norm)[0] for tree in models["cp_model"].estimators_])
+            rlo = float(np.percentile(rho_tree_preds, 2.5))
+            rhi = float(np.percentile(rho_tree_preds, 97.5))
+            clo = float(np.percentile(cp_tree_preds, 2.5))
+            chi = float(np.percentile(cp_tree_preds, 97.5))
+            # Convert dev% CI to absolute value CI using the CORRECTED AI value as denominator reference
+            # Since rho_AI = rho_PR / (1 + dev/100), the CI in absolute terms:
+            if 1.0 + rhi/100.0 > 0.01:
+                rho_ci_lower = float(rho_PR / (1.0 + rhi/100.0))
+                rho_ci_upper = float(rho_PR / (1.0 + rlo/100.0))
+            else:
+                rho_ci_lower = rho_PR; rho_ci_upper = rho_PR
+            if 1.0 + chi/100.0 > 0.01:
+                cp_ci_lower = float(Cp_PR / (1.0 + chi/100.0))
+                cp_ci_upper = float(Cp_PR / (1.0 + clo/100.0))
+            else:
+                cp_ci_lower = Cp_PR; cp_ci_upper = Cp_PR
+            # Ensure ordering: lower <= upper
+            result["rho_ci_lower"] = min(rho_ci_lower, rho_ci_upper)
+            result["rho_ci_upper"] = max(rho_ci_lower, rho_ci_upper)
+            result["cp_ci_lower"] = min(cp_ci_lower, cp_ci_upper)
+            result["cp_ci_upper"] = max(cp_ci_lower, cp_ci_upper)
+            # CI width as percentage of AI-corrected value: (upper - lower) / AI_value * 100
+            ai_rho = result["rho_AI"]
+            ai_cp = result["Cp_AI"]
+            if ai_rho > 0.01:
+                result["rho_ci_width"] = float((result["rho_ci_upper"] - result["rho_ci_lower"]) / ai_rho * 100)
+            else:
+                result["rho_ci_width"] = 0.0
+            if ai_cp > 0.01:
+                result["cp_ci_width"] = float((result["cp_ci_upper"] - result["cp_ci_lower"]) / ai_cp * 100)
+            else:
+                result["cp_ci_width"] = 0.0
+        except Exception:
+            # CI计算失败时静默跳过，保留None
+            pass
     
     except Exception as e:
         result["message"] = f"AI补偿预测失败: {str(e)}"
@@ -3808,15 +3820,16 @@ def _optimize_formulation(matrix_name, filler_name, target_lam, max_rho, max_cos
     
     def objective(vf):
         """目标：最小化 |λ_pred - λ_target|"""
-        if vf < 0 or vf > 0.6:
+        if vf < 0 or vf > 0.7:
             return 1e9
         lam = _compute_tc(vf, lam_f, lam_m)
         rho = vf*rho_f + (1-vf)*rho_m
-        cost = vf*rho_f*price_f + (1-vf)*rho_m*price_m
+        mass_t = vf*rho_f + (1-vf)*rho_m
+        cost_per_kg = (vf*rho_f*price_f + (1-vf)*rho_m*price_m) / max(mass_t, 1e-9)
         # 约束惩罚
         penalty = 0
         if rho > max_rho: penalty += (rho - max_rho) * 1000
-        if cost > max_cost: penalty += (cost - max_cost) * 0.1
+        if cost_per_kg > max_cost: penalty += (cost_per_kg - max_cost) * 0.1
         alpha = _compute_cte(vf, a_f, a_m, rho_f, rho_m)
         if target_alpha_min is not None and alpha < target_alpha_min:
             penalty += (target_alpha_min - alpha) * 1e10
@@ -3825,14 +3838,17 @@ def _optimize_formulation(matrix_name, filler_name, target_lam, max_rho, max_cos
         return abs(lam - target_lam) + penalty
     
     from scipy.optimize import minimize_scalar
-    res = minimize_scalar(objective, bounds=(0, 0.6), method="bounded")
+    res = minimize_scalar(objective, bounds=(0, 0.7), method="bounded")
     vf_opt = res.x
     
     lam_eff = _compute_tc(vf_opt, lam_f, lam_m)
     rho_eff = vf_opt*rho_f + (1-vf_opt)*rho_m
-    cp_eff = (vf_opt*rho_f*cp_f + (1-vf_opt)*rho_m*cp_m) / (vf_opt*rho_f + (1-vf_opt)*rho_m)
+    cp_eff = (vf_opt*rho_f*cp_f + (1-vf_opt)*rho_m*cp_m) / max(vf_opt*rho_f + (1-vf_opt)*rho_m, 1e-9)
     alpha_eff = _compute_cte(vf_opt, a_f, a_m, rho_f, rho_m)
-    cost_eff = vf_opt*rho_f*price_f + (1-vf_opt)*rho_m*price_m
+    # cost in CNY/kg (weighted by mass fraction, not volume)
+    mass_total = vf_opt*rho_f + (1-vf_opt)*rho_m
+    cost_per_kg = (vf_opt*rho_f*price_f + (1-vf_opt)*rho_m*price_m) / max(mass_total, 1e-9)
+    cost_eff = cost_per_kg
     
     feasible = (rho_eff <= max_rho + 1) and (cost_eff <= max_cost + 1)
     if target_alpha_min is not None and alpha_eff < target_alpha_min: feasible = False
@@ -3919,8 +3935,7 @@ def render_optimization_page():
                 for mat_name in allowed_mats:
                     for fill_name in allowed_mats:
                         if mat_name == fill_name: continue
-                        filler_names = {"氮化硼 (BN)","氧化铝 (Al2O3)","碳化硅 (SiC)",
-                                        "石墨烯 (Graphene)","碳纳米管 (CNT)","碳纤维 (Carbon Fiber)"}
+                        filler_names = {k for k in MATERIAL_DB_OPT if MATERIAL_DB_OPT[k].get("lambda", 0) > 10}  # 自动识别填料（λ>10）
                         if mat_name in filler_names and fill_name not in filler_names:
                             continue
                         if mat_name not in filler_names and fill_name in filler_names:
@@ -3961,34 +3976,45 @@ def render_optimization_page():
                 
                 used_keys = set()
                 
-                # 方案1：最优导热（min |λ - target_λ|）
-                for r in feasible:
-                    if _make_key(r) not in used_keys:
-                        best_tc = r; used_keys.add(_make_key(r)); break
+                # 方案1：最优导热（min |λ - target_λ|），取偏差最小的方案
+                sorted_by_dev = sorted(feasible, key=lambda r: r["dev"])
+                best_tc = sorted_by_dev[0]
+                used_keys.add(_make_key(best_tc))
                 
-                # 方案2：最低成本（满足 λ ≥ target_λ × 0.6 的前提下）
+                # 方案2：最低成本（满足 λ ≥ target_λ × 0.5 的前提下，必须与方案1不同）
                 cost_candidates = [r for r in feasible
-                                   if r["lam"] >= target_lam * 0.6 and _make_key(r) not in used_keys]
+                                   if r["lam"] >= target_lam * 0.5 and _make_key(r) not in used_keys]
                 if cost_candidates:
                     best_cost = min(cost_candidates, key=lambda r: r["cost"])
                     used_keys.add(_make_key(best_cost))
                 else:
-                    # 无约束候选，取成本最低的非重复方案
-                    for r in sorted(feasible, key=lambda r: r["cost"]):
-                        if _make_key(r) not in used_keys:
-                            best_cost = r; used_keys.add(_make_key(r)); break
+                    # 降级：不限制λ，取方案1之外的任一方案，按成本排序
+                    fallback = [r for r in sorted(feasible, key=lambda r: r["cost"])
+                                if _make_key(r) not in used_keys]
+                    if fallback:
+                        best_cost = fallback[0]
+                        used_keys.add(_make_key(best_cost))
+                    else:
+                        # 只剩一个组合，复用方案1的（标记为同一方案）
+                        best_cost = best_tc
                 
-                # 方案3：综合最优（最高综合评分，不同于前两个）
-                overall_candidates = [r for r in feasible if _make_key(r) not in used_keys]
+                # 方案3：综合最优（最高综合评分，必须与前面不同，且VF在5-70%范围内变异）
+                overall_candidates = [r for r in feasible if _make_key(r) not in used_keys and 0.05 <= r["vf"] <= 0.7]
                 if overall_candidates:
                     best_overall = max(overall_candidates, key=_score)
                     used_keys.add(_make_key(best_overall))
                 else:
-                    # 极端情况：如果只剩1个组合，选feasible中评分最高的
-                    best_overall = max(feasible, key=_score)
+                    # 降级：从剩余非重复方案中取评分最高的
+                    remaining = [r for r in feasible if _make_key(r) not in used_keys]
+                    if remaining:
+                        best_overall = max(remaining, key=_score)
+                        used_keys.add(_make_key(best_overall))
+                    else:
+                        # 最后回退：取整个feasible中评分最高的（可能与前面重复，但保留不同VF的解释）
+                        best_overall = max(feasible, key=_score)
                 
                 # ── 全局可行性检查 ──
-                max_lam_achievable = max(r["lam"] for r in results) if results else 0
+                max_lam_achievable = max(r["lam"] for r in feasible) if feasible else (max(r["lam"] for r in results) if results else 0)
                 if max_lam_achievable < target_lam * 0.5:
                     st.error(
                         "🚨 当前材料库无法满足目标导热系数要求！\n\n" +
@@ -4026,9 +4052,9 @@ def render_optimization_page():
                     rho_ratio = plan["rho"] / max(max_rho, 1)
                     rho_score = max(0, 100 - rho_ratio * 100)
                     dev_score = max(0, 100 - plan["dev"] * 2)
-                    overall = round(tc_score * 0.4 + cost_score * 0.35 + rho_score * 0.15 + dev_score * 0.1)
-                    overall = max(0, min(100, overall))  # clamp 0-100
-                    score_color = "#10b981" if overall >= 80 else ("#38bdf8" if overall >= 60 else "#f59e0b")
+                    overall_raw = tc_score * 0.4 + cost_score * 0.35 + rho_score * 0.15 + dev_score * 0.1
+                    overall = round(max(0, min(100, overall_raw)), 1)  # clamp 0-100, 1 decimal
+                    score_color = "#10b981" if overall >= 80 else ("#38bdf8" if overall >= 60 else ("#f59e0b" if overall >= 40 else "#ef4444"))
                     
                     # 标签
                     tag = {0: "推荐首选", 1: "性价比之选", 2: "备选方案"}[ci] if is_zh else {0: "Top Pick", 1: "Best Value", 2: "Alternative"}[ci]
@@ -4042,7 +4068,7 @@ def render_optimization_page():
                             f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
                             f'<span style="font-size:1.8rem;">{icon}</span>' +
                             f'<div style="text-align:right;">' +
-                            f'<div style="font-size:1.6rem;font-weight:800;color:{score_color};">{overall}</div>' +
+                            f'<div style="font-size:1.6rem;font-weight:800;color:{score_color};">{overall:.1f}</div>' +
                             f'<div style="font-size:0.55rem;color:rgba(255,255,255,0.3);">{"综合评分" if is_zh else "Score"}/100</div>' +
                             f'</div></div>' +
                             # 配方
@@ -4075,10 +4101,10 @@ def render_optimization_page():
                             f'{">500%" if rho_ratio > 5.0 else "{:.0f}%".format(rho_ratio * 100)} {"上限" if is_zh else "of limit"}</div></div>' +
                             # 成本
                             f'<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;text-align:center;">' +
-                            f'<div style="font-size:0.55rem;color:rgba(255,255,255,0.3);">{"成本" if is_zh else "Cost"}</div>' +
-                            f'<div style="font-size:0.85rem;font-weight:700;color:#e2e8f0;">¥{plan["cost"]:.0f}</div>' +
-                            f'<div style="font-size:0.5rem;color:{"#10b981" if cost_ratio < 1 else "#ef4444"};">' +
-                            f'{">500%" if cost_ratio > 5.0 else "{:.0f}%".format(cost_ratio * 100)} {"预算" if is_zh else "budget"}</div></div>' +
+                            f'<div style="font-size:0.55rem;color:rgba(255,255,255,0.3);">{"预估成本" if is_zh else "Est. Cost"}</div>' +
+                            f'<div style="font-size:0.85rem;font-weight:700;color:#e2e8f0;">¥{plan["cost"]:.0f}/kg</div>' +
+                            f'<div style="font-size:0.5rem;color:{"#10b981" if cost_ratio <= 1 else "#ef4444"};">' +
+                            f'{"预算占比: {:.0f}%".format(cost_ratio*100) if cost_ratio <= 5.0 else "预算占比: >500%"} {"⚠️" if cost_ratio > 1 else "✅"}</div></div>' +
                             # α
                             f'<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;text-align:center;">' +
                             f'<div style="font-size:0.55rem;color:rgba(255,255,255,0.3);">α (1/K)</div>' +
@@ -4249,8 +4275,7 @@ def render_optimization_page():
                 for mat_name in allowed_mats:
                     for fill_name in allowed_mats:
                         if mat_name == fill_name: continue
-                        filler_names_opt = {"氮化硼 (BN)","氧化铝 (Al2O3)","碳化硅 (SiC)",
-                                        "石墨烯 (Graphene)","碳纳米管 (CNT)","碳纤维 (Carbon Fiber)"}
+                        filler_names_opt = {k for k in MATERIAL_DB_OPT if MATERIAL_DB_OPT[k].get("lambda", 0) > 10}  # 自动识别填料（λ>10）
                         if mat_name in filler_names_opt and fill_name not in filler_names_opt:
                             continue
                         if mat_name not in filler_names_opt and fill_name in filler_names_opt:
@@ -4402,6 +4427,10 @@ NEW_MATERIALS_DB = [
     {"名称": "活性炭",       "类别": "化工材料","ρ": 600, "λ": 0.5, "Cp": 1200, "α": 1.0e-5,  "应用": "VOCs吸附", "name_en": "Activated Carbon", "cat_en": "Chem-Eng Materials", "来源": "文献"},
     {"名称": "沸石 13X",     "类别": "化工材料","ρ": 1100,"λ": 0.3, "Cp": 900,  "α": 1.0e-5,  "应用": "气体分离", "name_en": "Zeolite 13X", "cat_en": "Chem-Eng Materials", "来源": "文献"},
     {"名称": "碳分子筛",     "类别": "化工材料","ρ": 800, "λ": 0.4, "Cp": 1000, "α": 1.0e-5,  "应用": "氮氧分离", "name_en": "Carbon Molecular Sieve", "cat_en": "Chem-Eng Materials", "来源": "文献"},
+    # ── 补充材料（扩展至35种）──
+    {"名称": "氮化铝 AlN基板", "类别": "陶瓷",  "ρ": 3260, "λ": 180.0,"Cp": 740, "α": 4.5e-6,  "应用": "高功率LED基板", "name_en": "AlN Substrate", "cat_en": "Ceramic", "来源": "文献"},
+    {"名称": "钼铜合金",       "类别": "化工材料","ρ": 10000,"λ": 160.0,"Cp": 250, "α": 7.0e-6,  "应用": "微波封装热沉", "name_en": "Mo-Cu Alloy", "cat_en": "Chem-Eng Materials", "来源": "文献"},
+    {"名称": "聚四氟乙烯 PTFE","类别": "聚合物", "ρ": 2200, "λ": 0.25, "Cp": 1000, "α": 1.2e-4,  "应用": "耐腐蚀密封、绝缘", "name_en": "PTFE (Teflon)", "cat_en": "Polymer", "来源": "文献"},
 ]
 
 
@@ -4415,6 +4444,9 @@ def render_materials_database():
     
     # 合并数据库 + 用户自定义材料
     all_materials = NEW_MATERIALS_DB + st.session_state["custom_materials"]
+    custom_count = len(st.session_state["custom_materials"])
+    if custom_count > 0:
+        st.caption(f"📌 已添加 {custom_count} 种自定义材料（本次会话有效）" if is_zh else f"📌 {custom_count} custom materials added (this session)")
 
     st.header("📚 新材料热物性数据库与典型应用案例" if is_zh else "📚 Advanced Materials Database & Case Studies")
     st.markdown(
@@ -4432,11 +4464,19 @@ def render_materials_database():
             key="mat_top_search",
             placeholder="输入关键词模糊搜索..." if is_zh else "Type to filter..."
         )
-    with add_col:
+    add_col_a, add_col_b = st.columns(2)
+    with add_col_a:
         add_custom_clicked = st.button(
             "➕ 添加自定义材料" if is_zh else "➕ Add Custom Material",
             key="mat_add_custom", width="stretch"
         )
+    with add_col_b:
+        if st.button("🗑️ 清除自定义" if is_zh else "🗑️ Clear Custom",
+                      key="mat_clear_custom", width="stretch",
+                      disabled=len(st.session_state.get("custom_materials", [])) == 0):
+            st.session_state["custom_materials"] = []
+            st.success("已清除所有自定义材料" if is_zh else "Cleared all custom materials")
+            st.rerun()
     
     # ── 添加自定义材料弹出表单 ──
     if add_custom_clicked or st.session_state.get("mat_show_custom_form", False):
@@ -4492,8 +4532,9 @@ def render_materials_database():
         with col_f1:
             categories = sorted(set(m["类别"] for m in all_materials))
             cat_filter = st.multiselect(
-                "类别筛选" if is_zh else "Category",
-                options=categories, default=categories, key="mat_cat_filter"
+                "类别筛选（多选=并集）" if is_zh else "Category (multi=union)",
+                options=categories, default=categories, key="mat_cat_filter",
+                help="多选时显示所有选中类别的材料（并集/OR逻辑）" if is_zh else "Multi-select shows all materials from selected categories (OR logic)"
             )
         with col_f2:
             search = st.text_input(
@@ -4501,16 +4542,21 @@ def render_materials_database():
                 key="mat_search"
             )
         
-        # ── 过滤逻辑（合并顶部搜索 + 分类筛选 + 标签页搜索）──
+        # ── 过滤逻辑（模糊搜索：支持关键词拆分 + 部分匹配）──
         def match_search(m, query):
             if not query: return True
-            q = query.lower()
-            return (q in m["名称"].lower()
-                    or q in m.get("name_en", "").lower()
-                    or q in m.get("应用", "").lower()
-                    or q in m.get("类别", "").lower())
+            # Split query into individual keywords, ALL must match (AND logic)
+            keywords = query.lower().split()
+            searchable = (m["名称"].lower() + " "
+                         + m.get("name_en", "").lower() + " "
+                         + m.get("应用", "").lower() + " "
+                         + m.get("类别", "").lower())
+            for kw in keywords:
+                if kw not in searchable:
+                    return False
+            return True
         
-        # 合并双搜索词
+        # 合并双搜索词（顶部搜索 + 标签页搜索）
         combined_search = " ".join(filter(None, [top_search.strip(), search.strip()]))
         filtered = [m for m in all_materials
                     if m["类别"] in cat_filter
@@ -4557,7 +4603,7 @@ def render_materials_database():
                     elif v < 10: return 'background: rgba(16,185,129,0.15)'
                     elif v < 100: return 'background: rgba(245,158,11,0.15)'
                     else: return 'background: rgba(239,68,68,0.15)'
-                except:
+                except Exception:
                     return ''
             
             lam_col = col_map["λ"]
@@ -4927,7 +4973,8 @@ def render_home_page():
     col_rpt, _ = st.columns([1, 3])
     with col_rpt:
         if st.button("📄 生成技术验证报告" if is_zh else "📄 Generate Technical Report", key="gen_report_home", width="stretch"):
-            report_md = generate_tech_report(st.session_state.get("lang", "zh"))
+            with st.spinner("正在生成报告..." if is_zh else "Generating report..."):
+                report_md = generate_tech_report(st.session_state.get("lang", "zh"))
             st.download_button(
                 "💾 下载报告 (Markdown)" if is_zh else "💾 Download Report (Markdown)",
                 data=report_md,
@@ -5122,8 +5169,8 @@ def generate_tech_report_pdf(lang="zh"):
             super().__init__("P", "mm", "A4")
             self.set_auto_page_break(True, 22)
             if use_cjk:
-                self.add_font("cjk", "", CJK_FONT, uni=True)
-                self.add_font("cjk", "B", CJK_FONT_BOLD, uni=True)
+                self.add_font("cjk", "", CJK_FONT)
+                self.add_font("cjk", "B", CJK_FONT_BOLD)
             self.alias_nb_pages()
         
         def header(self):
@@ -5639,7 +5686,8 @@ def render_report_button():
         col_a, col_b = st.columns(2)
         with col_a:
             if st.button("📝 Markdown" if is_zh else "📝 Markdown", key="gen_report_md", width="stretch"):
-                report_md = generate_tech_report(st.session_state.get("lang", "zh"))
+                with st.spinner("正在生成报告..." if is_zh else "Generating report..."):
+                    report_md = generate_tech_report(st.session_state.get("lang", "zh"))
                 st.download_button(
                     "💾 下载 MD" if is_zh else "💾 Download MD",
                     data=report_md,
