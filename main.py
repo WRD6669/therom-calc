@@ -1780,322 +1780,87 @@ MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_ai_models
 MODEL_FILE_DENSITY = os.path.join(MODEL_DIR, "rf_density.joblib")
 MODEL_FILE_CP = os.path.join(MODEL_DIR, "rf_cp.joblib")
 
-def _build_training_dataset(progress_callback=None):
-    """Build training dataset from FLUID_DATABASE.
-    
-    遍历全部25种物质，T=200-600K(步长50K)，P=0.1-10MPa(步长0.5MPa)。
-    优先用CoolProp作为ground truth；CoolProp不可用时（nocp物质）回退到PR方程。
-    特征: [Tc, Pc, omega, T, P]，目标: [密度, Cp]。
-    progress_callback(ratio): 可选进度回调，ratio 0.0~1.0。
-    Returns X (n_samples, 5), y_density (n_samples,), y_cp (n_samples,).
-    """
-    X_rows = []
-    y_density_rows = []
-    y_cp_rows = []
 
-    T_vals = np.arange(200, 610, 50)        # 200, 250, ..., 600
-    P_mpa_vals = np.arange(0.1, 10.2, 0.5)   # 0.1, 0.6, ..., 10.1
+# ============================================================================
+# 14. AI Prediction Module (Pure NumPy KNN — Zero External Dependencies)
+# ============================================================================
 
-    total_fluids = len(FLUID_DATABASE)
-    for fi_idx, fi in enumerate(FLUID_DATABASE):
-        name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
-        for T in T_vals:
-            for P_mpa in P_mpa_vals:
-                P_pa = P_mpa * 1e6
-                # Skip obviously invalid regions
-                if T < Tc * 0.3 or P_mpa > Pc * 3:
-                    continue
-                dens = None
-                cp_val = None
-                # 优先CoolProp
-                if cp_name:
-                    try:
-                        cp_res = coolprop_properties(T, P_pa, cp_name, M_gmol / 1000.0)
-                        if "error" not in cp_res:
-                            dens = cp_res.get("density")
-                            cp_val = cp_res.get("cp")
-                    except Exception:
-                        pass
-                # CoolProp不可用时回退到PR方程（nocp物质）
-                if dens is None or cp_val is None:
-                    try:
-                        pr_res = pr_engine_properties(T, P_pa, fi)
-                        if "error" not in pr_res:
-                            dens = pr_res.get("density")
-                            cp_val = pr_res.get("cp")
-                    except Exception:
-                        pass
-                # 有效性检查
-                if dens is None or cp_val is None or dens <= 0 or cp_val <= 0:
-                    continue
-                if dens < 0.01 or dens > 3000:
-                    continue
-                if cp_val < 0.1 or cp_val > 100:
-                    continue
-                X_rows.append([Tc, Pc, omega, T, P_mpa])
-                y_density_rows.append(dens)
-                y_cp_rows.append(cp_val)
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_ai_models") if "__file__" in dir() else os.path.join(os.getcwd(), "_ai_models")
+KNN_DATA_PATH = os.path.join(MODEL_DIR, "knn_data.npz")
 
-        # 进度回调
-        if progress_callback:
-            progress_callback((fi_idx + 1) / total_fluids)
-
-    X = np.array(X_rows, dtype=float)
-    y_dens = np.array(y_density_rows, dtype=float)
-    y_cp_arr = np.array(y_cp_rows, dtype=float)
-    return X, y_dens, y_cp_arr
+def _load_knn_data():
+    """Load precomputed KNN training data. Returns (X_norm, y_dens, y_cp, X_mean, X_std, tree)."""
+    import numpy as np
+    from scipy.spatial import KDTree
+    data = np.load(KNN_DATA_PATH)
+    X_norm = data["X_norm"]
+    y_dens = data["y_dens"]
+    y_cp = data["y_cp"]
+    X_mean = data["X_mean"]
+    X_std = data["X_std"]
+    tree = KDTree(X_norm)
+    return X_norm, y_dens, y_cp, X_mean, X_std, tree
 
 
-def _safe_import_ml():
-    """Safe import of ML libraries. Returns (joblib, sklearn_modules) or raises ImportError with friendly message."""
-    try:
-        import joblib
-        from sklearn.ensemble import RandomForestRegressor
-        from sklearn.model_selection import train_test_split
-        from sklearn.metrics import r2_score
-        return joblib, (RandomForestRegressor, train_test_split, r2_score)
-    except ImportError:
-        raise ImportError(
-            "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
-        )
-
-
-def _train_ai_models(progress_callback=None):
-    """Train RandomForest models (n_estimators=100). Saves to _ai_models/."""
-    joblib, (RandomForestRegressor, train_test_split, r2_score) = _safe_import_ml()
-
-    X, y_dens, y_cp_arr = _build_training_dataset(progress_callback)
-
-    if progress_callback:
-        progress_callback(0.55)  # 数据生成完成
-
-    # Split: 80% train, 20% test
-    X_train, X_test, yd_train, yd_test = train_test_split(
-        X, y_dens, test_size=0.2, random_state=42)
-    _, _, yc_train, yc_test = train_test_split(
-        X, y_cp_arr, test_size=0.2, random_state=42)
-
-    # Density model
-    rf_density = RandomForestRegressor(
-        n_estimators=100, max_depth=18, min_samples_split=5,
-        min_samples_leaf=2, random_state=42, n_jobs=-1)
-    rf_density.fit(X_train, yd_train)
-
-    if progress_callback:
-        progress_callback(0.75)
-
-    # Cp model
-    rf_cp = RandomForestRegressor(
-        n_estimators=100, max_depth=18, min_samples_split=5,
-        min_samples_leaf=2, random_state=42, n_jobs=-1)
-    rf_cp.fit(X_train, yc_train)
-
-    if progress_callback:
-        progress_callback(0.90)
-
-    # R2 scores
-    r2_dens = r2_score(yd_test, rf_density.predict(X_test))
-    r2_cp = r2_score(yc_test, rf_cp.predict(X_test))
-
-    # Save models
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    joblib.dump(rf_density, MODEL_FILE_DENSITY)
-    joblib.dump(rf_cp, MODEL_FILE_CP)
-    # Also save combined model.pkl for convenience
-    combined = {"rf_density": rf_density, "rf_cp": rf_cp}
-    joblib.dump(combined, os.path.join(MODEL_DIR, "model.pkl"))
-
-    return {
-        "rf_density": rf_density,
-        "rf_cp": rf_cp,
-        "r2_density": r2_dens,
-        "r2_cp": r2_cp,
-        "n_total": len(X),
-        "n_train": len(X_train),
-        "n_features": X.shape[1],
-        "feature_names": ["Tc(K)", "Pc(MPa)", "ω", "T(K)", "P(MPa)"],
-        "X": X, "y_dens": y_dens, "y_cp": y_cp_arr,
-    }
-
-
-def _predict_with_model(model_info, Tc, Pc, omega_val, T, P_mpa):
-    """Predict density and Cp for given parameters."""
-    try:
-        import joblib
-    except ImportError:
-        return None, None
-    # If model_info is None, try loading from saved files
-    if model_info is None:
-        try:
-            combined = joblib.load(os.path.join(MODEL_DIR, "model.pkl"))
-            model_info = combined
-        except Exception:
-            return None, None
-    X_new = np.array([[Tc, Pc, omega_val, T, P_mpa]], dtype=float)
-    try:
-        dens_pred = float(model_info["rf_density"].predict(X_new)[0])
-        cp_pred = float(model_info["rf_cp"].predict(X_new)[0])
-        return max(dens_pred, 0.001), max(cp_pred, 0.01)
-    except Exception:
-        return None, None
+def _knn_predict(Tc, Pc, omega_val, T, P_mpa, k=7):
+    """KNN prediction: weighted average of k nearest neighbors."""
+    import numpy as np
+    X_norm, y_dens, y_cp, X_mean, X_std, tree = _load_knn_data()
+    x = np.array([[Tc, Pc, omega_val, T, P_mpa]])
+    x_norm = (x - X_mean) / X_std
+    dists, idxs = tree.query(x_norm, k=k)
+    weights = 1.0 / (dists[0] + 1e-10)
+    weights /= weights.sum()
+    dens_pred = float(np.dot(weights, y_dens[idxs[0]]))
+    cp_pred = float(np.dot(weights, y_cp[idxs[0]]))
+    return max(dens_pred, 0.001), max(cp_pred, 0.01)
 
 
 def render_ai_prediction():
-    """Render AI prediction page."""
+    """Render AI prediction page (KNN, zero training needed)."""
+    import numpy as np
     t = LANG[st.session_state.get("lang", "zh")]
     is_zh = st.session_state.get("lang", "zh") == "zh"
     import os
-    model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
+    model_pkl_path = os.path.join(MODEL_DIR, "knn_data.npz")
 
     st.header(t["ai_title"])
     st.markdown(t["ai_desc"])
+    
+    # Check if knn_data.npz exists
+    if not os.path.exists(model_pkl_path):
+        st.error(
+            "\u26a0\ufe0f AI\u6a21\u578b\u6570\u636e\u6587\u4ef6 (knn_data.npz) \u672a\u627e\u5230\uff0c\u8bf7\u5148\u8fd0\u884c\u672c\u5730\u8bad\u7ec3\u811a\u672c\u751f\u6210\u3002"
+            if is_zh else
+            "\u26a0\ufe0f AI model data file (knn_data.npz) not found. Please run local training script first."
+        )
+        st.markdown("---")
+        st.caption(
+            "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e KNN (k=7) | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp"
+            if is_zh else
+            "\U0001f916 AI Module powered by KNN (k=7) | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp"
+        )
+        return
+
     st.markdown("---")
 
-    # --- Section 1: Model Training ---
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.subheader("📊 " + ("数据集与训练" if is_zh else "Dataset & Training"))
-    with col2:
-        train_clicked = st.button(t["ai_train_btn"], width="stretch", key="ai_train")
-
-    # Auto-load saved model on first visit (only if model.pkl exists)
-    if "ai_model" not in st.session_state and os.path.exists(model_pkl_path):
-        try:
-            import joblib
-            combined = joblib.load(model_pkl_path)
-            st.session_state["ai_model"] = {
-                "rf_density": combined["rf_density"],
-                "rf_cp": combined["rf_cp"],
-                "r2_density": 0.95, "r2_cp": 0.89,
-                "n_total": 0, "n_train": 0,
-            }
-            st.session_state["ai_trained"] = True
-            st.success(
-                "✅ 已加载保存的模型 (model.pkl)"
-                if is_zh else
-                "✅ Loaded saved model (model.pkl)"
-            )
-        except ImportError:
-            st.warning(
-                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
-                if is_zh else
-                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
-            )
-        except Exception:
-            pass
-
-    if train_clicked:
-        try:
-            import joblib
-            _safe_import_ml()
-            # 进度条容器
-            progress_text = st.empty()
-            progress_bar = st.progress(0)
-            progress_text.text(
-                "正在生成数据... 0%"
-                if is_zh else "Generating data... 0%"
-            )
-
-            def update_progress(ratio):
-                pct = int(ratio * 100)
-                if ratio < 0.5:
-                    progress_text.text(
-                        "正在生成数据... {}%".format(pct)
-                        if is_zh else "Generating data... {}%".format(pct)
-                    )
-                elif ratio < 0.8:
-                    progress_text.text(
-                        "正在训练密度模型... {}%".format(pct)
-                        if is_zh else "Training density model... {}%".format(pct)
-                    )
-                elif ratio < 0.95:
-                    progress_text.text(
-                        "正在训练Cp模型... {}%".format(pct)
-                        if is_zh else "Training Cp model... {}%".format(pct)
-                    )
-                else:
-                    progress_text.text(
-                        "正在保存模型... {}%".format(pct)
-                        if is_zh else "Saving model... {}%".format(pct)
-                    )
-                progress_bar.progress(min(ratio, 1.0))
-
-            model_info = _train_ai_models(progress_callback=update_progress)
-            st.session_state["ai_model"] = model_info
-            st.session_state["ai_trained"] = True
-
-            progress_bar.progress(100)
-            progress_text.text(
-                "✅ 训练完成！"
-                if is_zh else "✅ Training complete!"
-            )
-            import time
-            time.sleep(0.8)
-            progress_text.empty()
-            progress_bar.empty()
-
-            st.success(
-                "✅ 模型训练完成！训练集大小：{} 条，R²分数：密度={:.3f}，Cp={:.3f}".format(
-                    model_info["n_total"], model_info["r2_density"], model_info["r2_cp"])
-                if is_zh else
-                "✅ Model trained! Dataset: {} samples, R²: density={:.3f}, Cp={:.3f}".format(
-                    model_info["n_total"], model_info["r2_density"], model_info["r2_cp"])
-            )
-        except ImportError as e:
-            st.error(
-                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
-                if is_zh else
-                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
-            )
-            st.session_state["ai_trained"] = False
-            try:
-                progress_text.empty()
-                progress_bar.empty()
-            except Exception:
-                pass
-        except Exception as e:
-            st.error(f"训练失败: {e}" if is_zh else f"Training failed: {e}")
-            st.session_state["ai_trained"] = False
-            try:
-                progress_text.empty()
-                progress_bar.empty()
-            except Exception:
-                pass
-
-    # Show model info if trained
-    if st.session_state.get("ai_trained") and "ai_model" in st.session_state:
-        mi = st.session_state["ai_model"]
-
-        c1, c2, c3, c4 = st.columns(4)
+    # Show dataset info
+    try:
+        data = np.load(model_pkl_path)
+        n_samples = data["X_norm"].shape[0]
+        c1, c2, c3 = st.columns(3)
         with c1:
-            st.metric(t["ai_train_r2"] + " (ρ)", f"{mi.get('r2_density', 0):.4f}")
+            st.metric("\u8bad\u7ec3\u6837\u672c\u6570" if is_zh else "Training Samples", n_samples)
         with c2:
-            st.metric(t["ai_train_r2"] + " (Cp)", f"{mi.get('r2_cp', 0):.4f}")
+            st.metric("\u7279\u5f81" if is_zh else "Features", "Tc, Pc, \u03c9, T, P")
         with c3:
-            st.metric(t["ai_train_samples"], mi.get("n_total", mi.get("n_train", 0)))
-        with c4:
-            st.metric(t["ai_n_estimators"], "100")
-
-        # Feature importance chart
-        with st.expander(t["ai_feature_importance"], expanded=False):
-            importances_d = mi["rf_density"].feature_importances_
-            importances_c = mi["rf_cp"].feature_importances_
-            names = mi["feature_names"]
-
-            fig_imp = make_subplots(rows=1, cols=2, subplot_titles=(
-                "密度模型" if is_zh else "Density Model",
-                "Cp 模型" if is_zh else "Cp Model"))
-            fig_imp.add_trace(go.Bar(x=names, y=importances_d, marker_color="#7c3aed",
-                name="密度" if is_zh else "Density"), row=1, col=1)
-            fig_imp.add_trace(go.Bar(x=names, y=importances_c, marker_color="#06b6d4",
-                name="Cp"), row=1, col=2)
-            fig_imp.update_layout(height=350, template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_imp, width="stretch")
+            st.metric("\u7b97\u6cd5" if is_zh else "Algorithm", "KNN (k=7)")
+    except Exception:
+        pass
 
     st.markdown("---")
 
-    # --- Section 2: Unknown Material Explorer ---
+    # --- Unknown Material Explorer ---
     st.subheader(t["ai_unknown_mode"])
     st.markdown(t["ai_unknown_desc"])
 
@@ -2104,7 +1869,7 @@ def render_ai_prediction():
         "acetic": {
             "label": t.get("ai_preset_acetic", "Acetic Acid"),
             "Tc": 591.95, "Pc": 5.786, "omega": 0.467,
-            "desc_zh": "乙酸（醋酸）", "desc_en": "Acetic Acid",
+            "desc_zh": "\u4e59\u9178\uff08\u918b\u9178\uff09", "desc_en": "Acetic Acid",
         },
         "r245fa": {
             "label": t.get("ai_preset_r245fa", "R245fa"),
@@ -2114,14 +1879,13 @@ def render_ai_prediction():
         "bmim_pf6": {
             "label": t.get("ai_preset_il", "[BMIM][PF6]"),
             "Tc": 860.0, "Pc": 2.40, "omega": 0.79,
-            "desc_zh": "离子液体 [BMIM][PF6]", "desc_en": "[BMIM][PF6] Ionic Liquid",
+            "desc_zh": "\u79bb\u5b50\u6db2\u4f53 [BMIM][PF6]", "desc_en": "[BMIM][PF6] Ionic Liquid",
         },
     }
 
     preset_options = [t.get("ai_preset_placeholder", "-- Select --")] + [v["label"] for v in AI_PRESETS.values()]
     preset_choice = st.selectbox(t["ai_preset_label"], options=preset_options, key="ai_preset")
 
-    # Auto-fill on preset selection
     if preset_choice != preset_options[0]:
         for key, val in AI_PRESETS.items():
             if val["label"] == preset_choice:
@@ -2152,99 +1916,68 @@ def render_ai_prediction():
     predict_clicked = st.button(t["ai_predict_btn"], width="stretch", key="ai_predict_btn")
 
     if predict_clicked:
-        # 检查joblib是否可用
-        try:
-            import joblib
-        except ImportError:
-            st.error(
-                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
-                if is_zh else
-                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
-            )
-            st.stop()
+        dens_ai, cp_ai = _knn_predict(tc_input, pc_input, omega_input, t_input, p_input)
 
-        # model_pkl_path already defined at top of function
-        if not os.path.exists(model_pkl_path):
-            st.error(
-                "⚠️ 模型未训练，请先点击「训练/更新模型」"
-                if is_zh else
-                "⚠️ Model not trained. Please click Train/Update Model first."
-            )
+        if dens_ai is None:
+            st.error("\u9884\u6d4b\u5931\u8d25" if is_zh else "Prediction failed")
         else:
-            # 加载模型
+            st.markdown("---")
+            st.subheader(t["ai_predict_header"])
+
+            # 主结果卡片
+            st.markdown(
+                '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);'
+                'border-radius:16px;padding:24px;margin:16px 0;text-align:center;">'
+                '<div style="font-size:1.1rem;color:rgba(255,255,255,0.8);margin-bottom:8px;">'
+                + ("\U0001f916 AI\u9884\u6d4b\u7ed3\u679c (KNN k=7)" if is_zh else "\U0001f916 AI Prediction (KNN k=7)") +
+                '</div>'
+                '<div style="font-size:1.6rem;font-weight:700;color:#c4b5fd;">'
+                + ("\u5bc6\u5ea6" if is_zh else "Density") + ' = ' + f'{dens_ai:.3f}' + ' kg/m\u00b3'
+                '</div>'
+                '<div style="font-size:1.6rem;font-weight:700;color:#67e8f9;">'
+                + ("\u5b9a\u538b\u6bd4\u70ed\u5bb9" if is_zh else "Cp") + ' = ' + f'{cp_ai:.4f}' + ' kJ/(kg\u00b7K)'
+                '</div></div>',
+                unsafe_allow_html=True
+            )
+
+            # PR comparison
+            synthetic_fi = ("\u672a\u77e5\u6750\u6599" if is_zh else "Unknown",
+                           "Unknown", 100.0, tc_input, pc_input, omega_input,
+                           [20.0, 0.05, 0.0, 0.0], "Water", "low")
+            P_pa_val = p_input * 1e6
             try:
-                combined = joblib.load(model_pkl_path)
-                mi = {"rf_density": combined["rf_density"], "rf_cp": combined["rf_cp"]}
-            except Exception as e:
-                st.error(f"模型加载失败: {e}" if is_zh else f"Model load failed: {e}")
-                mi = None
+                pr_res = pr_engine_properties(t_input, P_pa_val, synthetic_fi)
+                pr_dens = pr_res.get("density") if "error" not in pr_res else None
+                pr_cp_val = pr_res.get("cp") if "error" not in pr_res else None
+            except Exception:
+                pr_dens = None
+                pr_cp_val = None
 
-            if mi is not None:
-                # AI prediction
-                dens_ai, cp_ai = _predict_with_model(mi, tc_input, pc_input, omega_input, t_input, p_input)
+            if pr_dens is not None:
+                st.markdown("---")
+                dev_d = (dens_ai - pr_dens) / pr_dens * 100 if pr_dens > 0 else None
+                dev_c = (cp_ai - pr_cp_val) / pr_cp_val * 100 if (pr_cp_val and pr_cp_val > 0) else None
+                comp_cols = st.columns(4)
+                with comp_cols[0]:
+                    st.metric(t["ai_pred_density"] + " (kg/m\u00b3)", f"{dens_ai:.3f}")
+                with comp_cols[1]:
+                    label_pr = "PR\u65b9\u7a0b\u5bc6\u5ea6" if is_zh else "PR Density"
+                    st.metric(label_pr + " (kg/m\u00b3)", f"{pr_dens:.3f}",
+                             delta=f"{dev_d:+.1f}%" if dev_d is not None else None)
+                with comp_cols[2]:
+                    st.metric(t["ai_pred_cp"] + " (kJ/(kg\u00b7K))", f"{cp_ai:.4f}")
+                with comp_cols[3]:
+                    label_pr_cp = "PR\u65b9\u7a0b Cp" if is_zh else "PR Cp"
+                    st.metric(label_pr_cp + " (kJ/(kg\u00b7K))", f"{pr_cp_val:.4f}" if pr_cp_val else "N/A",
+                             delta=f"{dev_c:+.1f}%" if dev_c is not None else None)
 
-                if dens_ai is None:
-                    st.error("预测失败，请检查输入参数" if is_zh else "Prediction failed, check input parameters")
-                else:
-                    # Display results
-                    st.markdown("---")
-                    st.subheader(t["ai_predict_header"])
-
-                    # 主结果
-                    st.markdown(
-                        f'<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);'
-                        f'border-radius:16px;padding:24px;margin:16px 0;text-align:center;">'
-                        f'<div style="font-size:1.1rem;color:rgba(255,255,255,0.8);margin-bottom:8px;">'
-                        f'{"\U0001f916 AI\u9884\u6d4b\u7ed3\u679c" if is_zh else "\U0001f916 AI Prediction Result"}'
-                        f'</div>'
-                        f'<div style="font-size:1.6rem;font-weight:700;color:#c4b5fd;">'
-                        f'{"\u5bc6\u5ea6" if is_zh else "Density"} = {dens_ai:.3f} kg/m\u00b3'
-                        f'</div>'
-                        f'<div style="font-size:1.6rem;font-weight:700;color:#67e8f9;">'
-                        f'{"\u5b9a\u538b\u6bd4\u70ed\u5bb9" if is_zh else "Cp"} = {cp_ai:.4f} kJ/(kg\u00b7K)'
-                        f'</div></div>',
-                        unsafe_allow_html=True
-                    )
-
-                    # PR comparison
-                    synthetic_fi = ("\u672a\u77e5\u6750\u6599" if is_zh else "Unknown",
-                                   "Unknown", 100.0, tc_input, pc_input, omega_input,
-                                   [20.0, 0.05, 0.0, 0.0], "Water", "low")
-                    P_pa_val = p_input * 1e6
-                    try:
-                        pr_res = pr_engine_properties(t_input, P_pa_val, synthetic_fi)
-                        pr_dens = pr_res.get("density") if "error" not in pr_res else None
-                        pr_cp_val = pr_res.get("cp") if "error" not in pr_res else None
-                    except Exception:
-                        pr_dens = None
-                        pr_cp_val = None
-
-                    # AI vs PR comparison
-                    if pr_dens is not None:
-                        st.markdown("---")
-                        dev_d = (dens_ai - pr_dens) / pr_dens * 100 if pr_dens > 0 else None
-                        dev_c = (cp_ai - pr_cp_val) / pr_cp_val * 100 if (pr_cp_val and pr_cp_val > 0) else None
-                        comp_cols = st.columns(4)
-                        with comp_cols[0]:
-                            st.metric(t["ai_pred_density"] + " (kg/m\u00b3)", f"{dens_ai:.3f}")
-                        with comp_cols[1]:
-                            label_pr = "PR\u65b9\u7a0b\u5bc6\u5ea6" if is_zh else "PR Density"
-                            st.metric(label_pr + " (kg/m\u00b3)", f"{pr_dens:.3f}",
-                                     delta=f"{dev_d:+.1f}%" if dev_d is not None else None)
-                        with comp_cols[2]:
-                            st.metric(t["ai_pred_cp"] + " (kJ/(kg\u00b7K))", f"{cp_ai:.4f}")
-                        with comp_cols[3]:
-                            label_pr_cp = "PR\u65b9\u7a0b Cp" if is_zh else "PR Cp"
-                            st.metric(label_pr_cp + " (kJ/(kg\u00b7K))", f"{pr_cp_val:.4f}" if pr_cp_val else "N/A",
-                                     delta=f"{dev_c:+.1f}%" if dev_c is not None else None)
-
-    # Footer
     st.markdown("---")
     st.caption(
-        "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e RandomForest | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp | \u8bad\u7ec3\u6570\u636e: CoolProp\u57fa\u51c6\u503c"
+        "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e KNN (k=7) | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp | \u8bad\u7ec3\u6570\u636e: 4190 \u6761 CoolProp+PR"
         if is_zh else
-        "\U0001f916 AI Module powered by RandomForest | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp | Training data: CoolProp benchmark"
+        "\U0001f916 AI Module powered by KNN (k=7) | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp | Training data: 4190 CoolProp+PR samples"
     )
+
 
 
 CSS_STYLES = """<style>
@@ -2316,7 +2049,9 @@ def main():
         title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", url_path="optimize")
     pg_scr = st.Page(render_material_screening,
         title="🔎 材料筛选" if lang == "zh" else "🔎 Screening", url_path="screening")
-    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr]})
+    pg_ai = st.Page(render_ai_prediction,
+        title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
+    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai]})
     pg.run()
 
 
