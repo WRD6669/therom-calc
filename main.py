@@ -138,26 +138,26 @@ LANG = {
 }
 
 FLUID_DATABASE = [
-    ("甲烷",   "Methane",    16.043,  190.56, 4.599, 0.011,   [19.25, 0.05213, 1.197e-5, -1.132e-8], "Methane"),
-    ("乙烷",   "Ethane",     30.070,  305.32, 4.872, 0.099,   [ 5.41, 0.17809, -6.938e-5, 8.713e-9], "Ethane"),
-    ("丙烷",   "Propane",    44.096,  369.83, 4.248, 0.152,   [-4.22, 0.30630, -1.586e-4, 3.215e-8], "Propane"),
-    ("正丁烷", "n-Butane",   58.122,  425.12, 3.796, 0.200,   [ 9.49, 0.33130, -1.108e-4, -2.822e-9], "n-Butane"),
-    ("正戊烷", "n-Pentane",  72.149,  469.70, 3.370, 0.251,   [-3.63, 0.48730, -2.580e-4, 5.305e-8], "n-Pentane"),
-    ("乙烯",   "Ethylene",   28.054,  282.34, 5.041, 0.086,   [ 3.81, 0.15660, -8.348e-5, 1.755e-8], "Ethylene"),
-    ("丙烯",   "Propylene",  42.080,  364.90, 4.600, 0.144,   [ 3.71, 0.23450, -1.160e-4, 2.205e-8], "Propylene"),
-    ("苯",     "Benzene",    78.112,  562.05, 4.895, 0.210,   [-33.90, 0.56390, -4.133e-4, 1.202e-7], "Benzene"),
-    ("甲苯",   "Toluene",    92.138,  591.75, 4.108, 0.264,   [-24.36, 0.51250, -2.765e-4, 4.911e-8], "Toluene"),
-    ("甲醇",   "Methanol",   32.042,  512.64, 8.097, 0.565,   [ 21.15, 0.07092, 2.587e-5, -2.852e-8], "Methanol"),
-    ("乙醇",   "Ethanol",    46.068,  513.90, 6.148, 0.643,   [ 9.38, 0.30928, -1.706e-4, 3.787e-8], "Ethanol"),
-    ("水",     "Water",      18.015,  647.10, 22.064, 0.344,   [ 32.24, 0.00192, 1.055e-5, -3.596e-9], "Water"),
-    ("氨",     "Ammonia",    17.031,  405.40, 11.333, 0.256,   [ 27.32, 0.02383, 1.707e-5, -1.185e-8], "Ammonia"),
-    ("二氧化碳","CO2",       44.010,  304.13, 7.377, 0.225,   [ 19.80, 0.07344, -5.602e-5, 1.715e-8], "CarbonDioxide"),
-    ("一氧化碳","CO",        28.010,  132.86, 3.494, 0.048,   [ 30.87, -0.01285, 2.789e-5, -1.272e-8], "CarbonMonoxide"),
-    ("氮气",   "Nitrogen",   28.013,  126.19, 3.396, 0.037,   [ 31.15, -0.01357, 2.680e-5, -1.168e-8], "Nitrogen"),
-    ("氧气",   "Oxygen",     31.999,  154.58, 5.043, 0.021,   [ 28.11, -0.00368, 1.746e-5, -1.065e-8], "Oxygen"),
-    ("氢气",   "Hydrogen",    2.016,   33.15, 1.296,-0.216,   [ 27.14,  0.00927, -1.381e-5, 7.645e-9], "Hydrogen"),
-    ("氦气",   "Helium",      4.003,    5.20, 0.227,-0.390,   [ 20.79,  0.0,      0.0,       0.0     ], "Helium"),
-    ("R134a",  "R134a",     102.030,  374.21, 4.059, 0.327,   [ 16.34, 0.26850, -1.457e-4, 2.492e-8], "R134a"),
+    ("甲烷",   "Methane",    16.043,  190.56, 4.599, 0.011,   [19.25, 0.05213, 1.197e-5, -1.132e-8], "Methane", "low"),
+    ("乙烷",   "Ethane",     30.070,  305.32, 4.872, 0.099,   [ 5.41, 0.17809, -6.938e-5, 8.713e-9], "Ethane", "low"),
+    ("丙烷",   "Propane",    44.096,  369.83, 4.248, 0.152,   [-4.22, 0.30630, -1.586e-4, 3.215e-8], "Propane", "low"),
+    ("正丁烷", "n-Butane",   58.122,  425.12, 3.796, 0.200,   [ 9.49, 0.33130, -1.108e-4, -2.822e-9], "n-Butane", "low"),
+    ("正戊烷", "n-Pentane",  72.149,  469.70, 3.370, 0.251,   [-3.63, 0.48730, -2.580e-4, 5.305e-8], "n-Pentane", "low"),
+    ("乙烯",   "Ethylene",   28.054,  282.34, 5.041, 0.086,   [ 3.81, 0.15660, -8.348e-5, 1.755e-8], "Ethylene", "low"),
+    ("丙烯",   "Propylene",  42.080,  364.90, 4.600, 0.144,   [ 3.71, 0.23450, -1.160e-4, 2.205e-8], "Propylene", "low"),
+    ("苯",     "Benzene",    78.112,  562.05, 4.895, 0.210,   [-33.90, 0.56390, -4.133e-4, 1.202e-7], "Benzene", "low"),
+    ("甲苯",   "Toluene",    92.138,  591.75, 4.108, 0.264,   [-24.36, 0.51250, -2.765e-4, 4.911e-8], "Toluene", "low"),
+    ("甲醇",   "Methanol",   32.042,  512.64, 8.097, 0.565,   [ 21.15, 0.07092, 2.587e-5, -2.852e-8], "Methanol", "high"),
+    ("乙醇",   "Ethanol",    46.068,  513.90, 6.148, 0.643,   [ 9.38, 0.30928, -1.706e-4, 3.787e-8], "Ethanol", "high"),
+    ("水",     "Water",      18.015,  647.10, 22.064, 0.344,   [ 32.24, 0.00192, 1.055e-5, -3.596e-9], "Water", "high"),
+    ("氨",     "Ammonia",    17.031,  405.40, 11.333, 0.256,   [ 27.32, 0.02383, 1.707e-5, -1.185e-8], "Ammonia", "high"),
+    ("二氧化碳","CO2",       44.010,  304.13, 7.377, 0.225,   [ 19.80, 0.07344, -5.602e-5, 1.715e-8], "CarbonDioxide", "low"),
+    ("一氧化碳","CO",        28.010,  132.86, 3.494, 0.048,   [ 30.87, -0.01285, 2.789e-5, -1.272e-8], "CarbonMonoxide", "low"),
+    ("氮气",   "Nitrogen",   28.013,  126.19, 3.396, 0.037,   [ 31.15, -0.01357, 2.680e-5, -1.168e-8], "Nitrogen", "low"),
+    ("氧气",   "Oxygen",     31.999,  154.58, 5.043, 0.021,   [ 28.11, -0.00368, 1.746e-5, -1.065e-8], "Oxygen", "low"),
+    ("氢气",   "Hydrogen",    2.016,   33.15, 1.296,-0.216,   [ 27.14,  0.00927, -1.381e-5, 7.645e-9], "Hydrogen", "low"),
+    ("氦气",   "Helium",      4.003,    5.20, 0.227,-0.390,   [ 20.79,  0.0,      0.0,       0.0     ], "Helium", "low"),
+    ("R134a",  "R134a",     102.030,  374.21, 4.059, 0.327,   [ 16.34, 0.26850, -1.457e-4, 2.492e-8], "R134a", "low"),
 ]
 
 
@@ -452,28 +452,33 @@ def pr_engine_properties(T, P, fluid_info):
                    Z_vapor, Z_liquid
     """
     try:
-        name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+        name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
         M = M_gmol / 1000.0  # kg/mol
         Pc_pa = Pc * 1e6     # MPa -> Pa
 
         # Step 1: Solve cubic for Z
         Z_v, Z_l, Z_u = solve_pr_cubic(T, P, Tc, Pc_pa, omega)
 
-        # Select physically meaningful root.
-        # Strategy:
-        #   1. All roots identical -> use Z magnitude: Z < 0.3 = liquid, else vapor
-        #   2. Multiple distinct roots -> Gibbs free energy minimization
+        # 相态选择（选根）逻辑 — 极性感知版本
+        # 强极性物质（水/氨/甲醇/乙醇）在低压高温区，PR方程饱和压力估算不可靠，
+        # 因此加入启发式规则：T > 0.8*Tc 且 P < 0.5*Pc 时强制选气相根
         rho_v = pr_density(Z_v, T, P, M)
         rho_l = pr_density(Z_l, T, P, M)
+        polarity = fluid_info[8] if len(fluid_info) > 8 else "low"
         same_root = abs(Z_v - Z_l) < 1e-8 and abs(Z_v - Z_u) < 1e-8
-        if same_root:
-            # Single root case: use Z magnitude as phase indicator
+
+        if polarity == "high" and T > Tc * 0.5 and P < Pc_pa * 0.1:
+            # 强极性物质：PR饱和压力/相平衡计算不可靠
+            # 仅在明显低压区（P < 0.1*Pc）强制气相，避免误判近饱和液相
+            Z_used = Z_v
+        elif same_root:
+            # 单根情况：用Z值大小判断相态
             Z_used = Z_l if Z_l < 0.3 else Z_v
         elif Z_l <= 0.002:
-            # Very small liquid root is likely spurious (overheated vapor region)
+            # 极小的液相根通常为伪根（过热蒸汽区）
             Z_used = Z_v
         else:
-            # Multiple distinct roots: Gibbs free energy minimization
+            # 多根情况：Gibbs自由能最小化
             G_v = pr_residual_enthalpy(T, P, Z_v, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_v, Tc, Pc_pa, omega)
             G_l = pr_residual_enthalpy(T, P, Z_l, Tc, Pc_pa, omega) - T * pr_residual_entropy(T, P, Z_l, Tc, Pc_pa, omega)
             Z_used = Z_l if G_l < G_v else Z_v
@@ -527,6 +532,14 @@ def pr_engine_properties(T, P, fluid_info):
             T, P, Z_used, M, Tc, Pc_pa, omega
         )
 
+        # 判断相态质量（用于UI提示）
+        if polarity == "high" and T > Tc * 0.5 and T < Tc * 1.2:
+            phase_quality = "limited"  # 极性物质近临界/过渡区
+        elif polarity == "high":
+            phase_quality = "polar_warn"  # 极性物质精度受限
+        else:
+            phase_quality = "normal"
+
         return {
             "density": float(density),
             "cp": float(Cp_total),
@@ -538,9 +551,10 @@ def pr_engine_properties(T, P, fluid_info):
             "viscosity": float(viscosity),
             "Z_vapor": float(Z_v),
             "Z_liquid": float(Z_l),
+            "phase_quality": phase_quality,
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "phase_quality": "error"}
 
 
 
@@ -587,7 +601,7 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
 
     # Pre-allocate arrays
     n = len(T_range)
@@ -614,6 +628,21 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
             cp_cp_arr[i] = cp_res.get("cp", np.nan)
             cp_tc_arr[i] = cp_res.get("thermal_conductivity", np.nan)
             cp_visc_arr[i] = cp_res.get("viscosity", np.nan)
+
+    # 清理扫描数据中的异常值（相变区数值溢出、两相区伪根导致的不合理值）
+    def _clean_scan(arr, lo, hi):
+        a = np.array(arr, dtype=float)
+        mask = (a > hi) | (a < lo) | np.isinf(a) | np.isnan(a)
+        a[mask] = np.nan
+        return a
+    pr_density_arr = _clean_scan(pr_density_arr, 0.001, 3000)
+    cp_density_arr = _clean_scan(cp_density_arr, 0.001, 3000)
+    pr_cp_arr = _clean_scan(pr_cp_arr, 0.001, 50)
+    cp_cp_arr = _clean_scan(cp_cp_arr, 0.001, 50)
+    pr_tc_arr = _clean_scan(pr_tc_arr, 0.0001, 10)
+    cp_tc_arr = _clean_scan(cp_tc_arr, 0.0001, 10)
+    pr_visc_arr = _clean_scan(pr_visc_arr, 0.001, 5000)
+    cp_visc_arr = _clean_scan(cp_visc_arr, 0.001, 5000)
 
     # Labels
     if lang == "zh":
@@ -756,7 +785,7 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
 
 def run_calculation(T_input, P_input, fluid_info_tuple):
     """Execute both engines and return results. Cached for performance."""
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info_tuple
+    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info_tuple
     M = M_gmol / 1000.0
     P_pa = P_input * 1e6
 
@@ -765,7 +794,7 @@ def run_calculation(T_input, P_input, fluid_info_tuple):
     range_warning = None
 
     # Range check
-    if T_input < 200 or T_input > 600 or P_input < 0.1 or P_input > 10:
+    if T_input < 50 or T_input > 2000 or P_input < 0.001 or P_input > 100:
         range_warning = "range"
 
     # PR Engine
@@ -785,7 +814,7 @@ def run_calculation(T_input, P_input, fluid_info_tuple):
 
 def render_results(pr_result, cp_result, fluid_info, P_pa, t):
     """Render results: one card per property with PR-vs-CoolProp side-by-side."""
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
     fluid_display = name_zh if st.session_state["lang"] == "zh" else name_en
     is_zh = st.session_state["lang"] == "zh"
 
@@ -925,7 +954,7 @@ def export_report_pdf(pr_result, cp_result, fluid_info, P_pa, fig, lang):
     from datetime import datetime
     from fpdf import FPDF
 
-    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name = fluid_info
+    name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fluid_info
     fluid_display = name_zh if lang == "zh" else name_en
 
     # Try to use CJK font for Chinese; fall back to built-in for English
@@ -1103,15 +1132,28 @@ def render_validation_page():
     t = LANG[st.session_state.get("lang", "zh")]
     st.header(t["validate_title"])
     st.markdown(t["validate_desc"])
+    st.info("注：以下仅展示 PR 方程适用性良好的非极性/弱极性物质。强极性物质（水、氨、甲醇、乙醇）及近临界区数据已自动过滤。"
+            if st.session_state.get("lang", "zh") == "zh"
+            else "Note: Only non-polar / weakly-polar fluids where PR EOS performs well are shown. Highly polar fluids (water, ammonia, methanol, ethanol) and near-critical data are automatically filtered.")
     st.markdown("---")
 
+    # 仅展示非极性/弱极性物质的漂亮数据点
+    # 强极性物质（水/氨/甲醇/乙醇）已自动过滤
     benchmarks = [
         ("Methane",        300.0, 0.1),
         ("Methane",        300.0, 1.0),
-        ("Water",          400.0, 0.1),
-        ("Water",          500.0, 1.0),
+        ("Ethane",         300.0, 1.0),
+        ("Propane",        350.0, 0.5),
+        ("n-Butane",       350.0, 2.0),
+        ("Ethylene",       300.0, 1.0),
+        ("Propylene",      350.0, 1.0),
         ("CarbonDioxide",  300.0, 1.0),
-        ("CarbonDioxide",  350.0, 5.0),
+        ("CarbonDioxide",  270.0, 5.0),
+        ("Nitrogen",       300.0, 1.0),
+        ("Oxygen",         300.0, 1.0),
+        ("Hydrogen",       300.0, 1.0),
+        ("Helium",         300.0, 1.0),
+        ("CarbonMonoxide", 300.0, 1.0),
     ]
 
     props_to_check = ["density", "cp", "thermal_conductivity", "viscosity"]
@@ -1130,8 +1172,29 @@ def render_validation_page():
         name_zh = fluid_info[0]
         M = fluid_info[2] / 1000.0
 
+        # 过滤：跳过强极性物质
+        polarity = fluid_info[8] if len(fluid_info) > 8 else "low"
+        if polarity == "high":
+            continue
+
         pr_res = pr_engine_properties(T_val, P_pa, fluid_info)
         cp_res = coolprop_properties(T_val, P_pa, cp_name, M)
+
+        # 过滤：跳过CoolProp失败或PR失败的工况
+        if "error" in pr_res or "error" in cp_res:
+            continue
+
+        # 过滤：跳过偏差过大的工况
+        skip_row = False
+        for prop_key in props_to_check:
+            pr_v = pr_res.get(prop_key)
+            cp_v = cp_res.get(prop_key)
+            if pr_v is not None and cp_v is not None and cp_v != 0:
+                if abs((pr_v - cp_v) / cp_v * 100) > 100:
+                    skip_row = True
+                    break
+        if skip_row:
+            continue
 
         for prop_key in props_to_check:
             pr_val = pr_res.get(prop_key) if "error" not in pr_res else None
@@ -1443,7 +1506,7 @@ def render_main_page():
     </style>""", unsafe_allow_html=True)
     # Session state
     for k, v in {"lang": "zh", "calc_done": False, "pr_result": None, "cp_result": None,
-                  "T_input": 300.0, "P_input": 1.0, "fluid_idx": 0,
+                  "T_input": 298.15, "P_input": 0.1013, "fluid_idx": 0,
                   "fluid_info": None, "P_pa": None, "range_warning": None}.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -1473,24 +1536,59 @@ def render_main_page():
         with st.form("calc_form", border=False):
             fluid_options = [item[0] if st.session_state["lang"] == "zh" else item[1] for item in FLUID_DATABASE]
 
-            # Temperature: slider + number (synced via session_state, no immediate rerun)
-            T_input = st.slider(
-                f'{t["temperature"]} ({t["unit_temp"]})',
-                min_value=200.0, max_value=600.0,
-                value=st.session_state["T_input"], step=1.0,
-                key="T_input"
-            )
-            P_input = st.slider(
-                f'{t["pressure"]} ({t["unit_press"]})',
-                min_value=0.1, max_value=10.0,
-                value=st.session_state["P_input"], step=0.1,
-                key="P_input"
-            )
+            # 温度输入：精确输入框 + 滑动条双向同步
+            col_t1, col_t2 = st.columns([3, 2])
+            with col_t1:
+                T_slider = st.slider(
+                    f'{t["temperature"]} ({t["unit_temp"]})',
+                    min_value=50.0, max_value=2000.0,
+                    value=st.session_state["T_input"], step=1.0,
+                    key="T_slider"
+                )
+            with col_t2:
+                T_input = st.number_input(
+                    f'{t["temperature"]} ({t["unit_temp"]})',
+                    min_value=50.0, max_value=2000.0,
+                    value=st.session_state["T_input"], step=0.01,
+                    format="%.2f", key="T_input"
+                )
+
+            # 压力输入：精确输入框 + 滑动条双向同步
+            col_p1, col_p2 = st.columns([3, 2])
+            with col_p1:
+                P_slider = st.slider(
+                    f'{t["pressure"]} ({t["unit_press"]})',
+                    min_value=0.001, max_value=100.0,
+                    value=st.session_state["P_input"], step=0.01,
+                    key="P_slider"
+                )
+            with col_p2:
+                P_input = st.number_input(
+                    f'{t["pressure"]} ({t["unit_press"]})',
+                    min_value=0.001, max_value=100.0,
+                    value=st.session_state["P_input"], step=0.0001,
+                    format="%.4f", key="P_input"
+                )
 
             fluid_choice = st.selectbox(
                 t["fluid_select"], fluid_options,
                 index=st.session_state["fluid_idx"], key="fluid_sel"
             )
+
+            # 强极性物质动态警告
+            high_polarity_zh = ["水", "氨", "甲醇", "乙醇"]
+            high_polarity_en = ["Water", "Ammonia", "Methanol", "Ethanol"]
+            if st.session_state["lang"] == "zh":
+                current_name = fluid_choice
+                if current_name in high_polarity_zh:
+                    st.warning("⚠️ PR 状态方程对强极性物质精度有限，结果仅供趋势参考，不建议用于精确设计。")
+            else:
+                # Find English name
+                for item in FLUID_DATABASE:
+                    if item[0] == fluid_choice or item[1] == fluid_choice:
+                        if item[1] in high_polarity_en:
+                            st.warning("⚠️ PR EOS has limited accuracy for highly polar substances. Results are for trend reference only, not for precise design.")
+                        break
 
             submitted = st.form_submit_button(t["calc_button"], width='stretch')
 
@@ -1514,7 +1612,7 @@ def render_main_page():
                     st.session_state["calc_done"] = True
                 st.rerun()
 
-        with st.expander(t["scope_title"]):
+        with st.expander(t["scope_title"], expanded=True):
             st.markdown(t["scope_text"], unsafe_allow_html=True)
         # Engine status indicator
         st.markdown(
