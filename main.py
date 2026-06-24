@@ -3553,7 +3553,7 @@ def render_materials_database():
                 except: return ''
             
             lam_col = col_map["λ"]
-            styled = df.style.applymap(color_lam, subset=[lam_col])
+            styled = df.style.map(color_lam, subset=[lam_col])
             st.dataframe(styled, width="stretch", height=500)
     
     # ═══════════════ TAB 2: 材料对比 ═══════════════
