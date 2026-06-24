@@ -1088,6 +1088,10 @@ def _show_ai_compensation(pr_result, cp_result, fluid_info, P_pa, t):
         st.caption("🤖 AI补偿模块 | RandomForest(n=100) | 训练数据13,905条 | 密度R²=0.45，CpR²=0.95 | 两相区识别准确率≥98.5% (5-fold CV) | AI修正模型用于提升传统状态方程在极端工况下的预测精度")
     else:
         st.caption("🤖 AI Compensation | RandomForest(n=100) | 13,905 samples | Density R²=0.45, Cp R²=0.95 | Two-phase acc 100% | AI model enhances EOS prediction accuracy under extreme conditions")
+    # ── 快捷跳转按钮 ──
+    if st.button("🔧 打开AI偏差补偿完整面板" if is_zh else "🔧 Open AI Compensation Panel", key="goto_ai_full"):
+        st.session_state["_redirect_to"] = "ai"
+        st.rerun()
 
 
 def _build_ai_card(label, unit, pr_val, ai_val, cp_val, ai_dev, ai_vs_cp_dev, fmt, is_zh, ci_lower=None, ci_upper=None, ci_width=None):
@@ -1261,12 +1265,12 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
                 "⚠️ **Warning: PR EOS has significant errors for transport properties (TC/viscosity). Use CoolProp values as reference. PR data is indicative only.**"
             )
         
-        # 输运性质修正选项按钮
+        # 输运性质修正选项 + AI补偿跳转按钮（始终可见）
         if tc_dev_big or visc_dev_big:
             st.markdown("---")
             btn_col1, btn_col2 = st.columns(2)
             with btn_col1:
-                if st.button("🔧 启用AI补偿修正" if is_zh else "🔧 Enable AI Compensation", key="enable_ai_transport"):
+                if st.button("🔧 跳转AI补偿修正" if is_zh else "🔧 Go to AI Compensation", key="enable_ai_transport"):
                     st.session_state["_redirect_to"] = "ai"
                     st.rerun()
             with btn_col2:
@@ -5672,60 +5676,26 @@ def main():
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
     render_report_button()  # 侧边栏技术报告按钮
 
-    # ── 页面跳转处理（通过 _redirect_to session flag 实现跨页面跳转）──
+    # ── 页面跳转处理 ──
     redirect_target = st.session_state.pop("_redirect_to", None)
     lang = st.session_state.get("lang", "zh")
-    pg_home = st.Page(render_home_page,
-        title="🏠 首页" if lang == "zh" else "🏠 Home", url_path="home", default=True)
-    pg_main = st.Page(render_main_page,
-        title="🧪 基础物性" if lang == "zh" else "🧪 Base Props", url_path="calc")
-    pg_val = st.Page(render_validation_page,
-        title="🔬 模型验证" if lang == "zh" else "🔬 Validation", url_path="validate")
-    pg_opt = st.Page(render_smart_optimize,
-        title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", url_path="optimize")
-    pg_scr = st.Page(render_material_screening,
-        title="🔎 材料筛选" if lang == "zh" else "🔎 Screening", url_path="screening")
-    pg_ai = st.Page(render_ai_prediction,
-        title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
-    pg_mat_db = st.Page(render_materials_database,
-        title="📚 材料数据库" if lang == "zh" else "📚 Database", url_path="materials_db")
-    pg_opt_design = st.Page(render_optimization_page,
-        title="🎯 优化设计" if lang == "zh" else "🎯 Optimize", url_path="optimize_design")
-    pg_comp = st.Page(render_composite_page,
-        title="🧩 复合材料" if lang == "zh" else "🧩 Composite", url_path="composite")
-    # ── 页面跳转支持（按钮跳转使用 switch_page，单文件用相对路径）──
-    # ── 页面跳转：如果 _redirect_to 有值，重建对应页面为默认页 ──
-    page_map = {"home": pg_home, "calc": pg_main, "validate": pg_val,
-                "optimize": pg_opt, "screening": pg_scr, "ai": pg_ai,
-                "materials_db": pg_mat_db, "optimize_design": pg_opt_design,
-                "composite": pg_comp}
-    if redirect_target and redirect_target in page_map:
-        # Rebuild the target page with default=True
-        target_pg = page_map[redirect_target]
-        # We need to create a new Page with default=True
-        # Extract the function and metadata from the existing page
-        render_funcs = {
-            "home": (render_home_page, "🏠 首页" if lang == "zh" else "🏠 Home", "home"),
-            "calc": (render_main_page, "🧪 基础物性" if lang == "zh" else "🧪 Base Props", "calc"),
-            "validate": (render_validation_page, "🔬 模型验证" if lang == "zh" else "🔬 Validation", "validate"),
-            "optimize": (render_smart_optimize, "🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", "optimize"),
-            "screening": (render_material_screening, "🔎 材料筛选" if lang == "zh" else "🔎 Screening", "screening"),
-            "ai": (render_ai_prediction, "🤖 AI预测" if lang == "zh" else "🤖 AI Predict", "ai"),
-            "materials_db": (render_materials_database, "📚 材料数据库" if lang == "zh" else "📚 Database", "materials_db"),
-            "optimize_design": (render_optimization_page, "🎯 优化设计" if lang == "zh" else "🎯 Optimize", "optimize_design"),
-            "composite": (render_composite_page, "🧩 复合材料" if lang == "zh" else "🧩 Composite", "composite"),
-        }
-        func, title, url = render_funcs[redirect_target]
-        new_target = st.Page(func, title=title, url_path=url, default=True)
-        other_keys = [k for k in render_funcs if k != redirect_target]
-        other_pages = []
-        for k in other_keys:
-            of, ot, ou = render_funcs[k]
-            other_pages.append(st.Page(of, title=ot, url_path=ou, default=False))
-        all_pages = [new_target] + other_pages
-    else:
-        all_pages = [pg_home, pg_main, pg_val, pg_opt, pg_scr, pg_ai, pg_comp, pg_opt_design, pg_mat_db]
-    pg = st.navigation({"pages": all_pages})
+    # Build page list with the target as default if redirecting
+    all_page_funcs = [
+        (render_home_page, "🏠 首页" if lang == "zh" else "🏠 Home", "home"),
+        (render_main_page, "🧪 基础物性" if lang == "zh" else "🧪 Base Props", "calc"),
+        (render_validation_page, "🔬 模型验证" if lang == "zh" else "🔬 Validation", "validate"),
+        (render_smart_optimize, "🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", "optimize"),
+        (render_material_screening, "🔎 材料筛选" if lang == "zh" else "🔎 Screening", "screening"),
+        (render_ai_prediction, "🤖 AI预测" if lang == "zh" else "🤖 AI Predict", "ai"),
+        (render_materials_database, "📚 材料数据库" if lang == "zh" else "📚 Database", "materials_db"),
+        (render_optimization_page, "🎯 优化设计" if lang == "zh" else "🎯 Optimize", "optimize_design"),
+        (render_composite_page, "🧩 复合材料" if lang == "zh" else "🧩 Composite", "composite"),
+    ]
+    pages = []
+    for i, (func, title, url) in enumerate(all_page_funcs):
+        is_default = (url == redirect_target) or (i == 0 and redirect_target is None)
+        pages.append(st.Page(func, title=title, url_path=url, default=is_default))
+    pg = st.navigation({"pages": pages})
     pg.run()
 
 
