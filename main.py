@@ -1937,6 +1937,7 @@ def render_smart_optimize():
     """智能优化页面：目标匹配推荐 + 批量精度扫描"""
     t = LANG[st.session_state.get("lang", "zh")]
     is_zh = st.session_state.get("lang", "zh") == "zh"
+    inv_exclude_polar = True  # default before checkbox in reverse-search tab
 
     st.header("🧠 智能工质筛选" if is_zh else "🧠 Smart Fluid Screening")
     st.markdown(
