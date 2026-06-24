@@ -3140,11 +3140,12 @@ def render_composite_page():
     
     col3, col4 = st.columns([2, 1])
     with col3:
-        vol_frac = st.slider(
-            "填料体积分数" if is_zh else "Filler Volume Fraction",
-            min_value=0.0, max_value=0.6, value=0.2, step=0.01,
-            format="%.0f%%", key="comp_vf"
+        vol_frac_pct = st.slider(
+            "填料体积分数 (%)" if is_zh else "Filler Volume Fraction (%)",
+            min_value=0, max_value=60, value=20, step=1,
+            format="%d%%", key="comp_vf"
         )
+        vol_frac = vol_frac_pct / 100.0  # convert % to decimal 0.0-0.6
     with col4:
         st.metric("填料体积" if is_zh else "Filler Vol.", f"{vol_frac*100:.0f}%")
         st.metric("基体体积" if is_zh else "Matrix Vol.", f"{(1-vol_frac)*100:.0f}%")
