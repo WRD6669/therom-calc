@@ -905,8 +905,13 @@ def create_property_plots(fluid_info, P_pa, T_range, lang):
             name=legend_cp, line=dict(color=color_cp, width=2.2, dash="dash"),
             legendgroup="cp", showlegend=show_legend), row=row, col=col)
 
+        # Property-specific minimum thresholds for annotation
+        if idx <= 1:  # density (0) and Cp (1): use 0.1 threshold
+            ann_thresh = 0.1
+        else:  # TC (2) and viscosity (3): use smaller threshold
+            ann_thresh = 1e-6
         mask = (np.isfinite(pr_data) & np.isfinite(cp_data) &
-                (np.abs(cp_data) > 1e-12) & (np.abs(pr_data) > 0.1) & (np.abs(cp_data) > 0.1))
+                (np.abs(cp_data) > 1e-12) & (np.abs(pr_data) > ann_thresh) & (np.abs(cp_data) > ann_thresh))
         if np.any(mask):
             dev_pct = np.abs((pr_data[mask] - cp_data[mask]) / cp_data[mask]) * 100
             max_i = np.argmax(dev_pct)
@@ -1262,10 +1267,8 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
             btn_col1, btn_col2 = st.columns(2)
             with btn_col1:
                 if st.button("🔧 启用AI补偿修正" if is_zh else "🔧 Enable AI Compensation", key="enable_ai_transport"):
-                    st.info(
-                        "正在跳转至AI偏差补偿页面..." if is_zh else "Redirecting to AI bias compensation page..."
-                    )
-                    st.switch_page("ai")
+                    st.session_state["_redirect_to"] = "ai"
+                    st.rerun()
             with btn_col2:
                 with st.expander("📚 查看替代模型" if is_zh else "📚 View Alternative Models"):
                     st.markdown(
@@ -2074,8 +2077,11 @@ def render_smart_optimize():
                                 return ["background-color: rgba(100,100,100,0.15); color: rgba(255,255,255,0.35)"] * len(row)
                             return [""] * len(row)
                         
-                        styled_df = df.style.apply(gray_out_high_match, axis=1)
-                        st.dataframe(styled_df, width="stretch", height=400)
+                        try:
+                            styled_df = df.style.apply(gray_out_high_match, axis=1)
+                            st.dataframe(styled_df, width="stretch", height=400)
+                        except Exception:
+                            st.dataframe(df, width="stretch", height=400)
                         
                         # ── 匹配度>20%提示 ──
                         high_match_count = sum(
@@ -2122,17 +2128,17 @@ def render_smart_optimize():
                                     if is_zh else
                                     "✅ Navigated to property calculation page for {}".format(best_name)
                                 )
-                                st.switch_page("calc")
+                                st.session_state["_redirect_to"] = "calc"
+                                st.rerun()
                         with btn_c2:
                             if st.button("🧩 用于复合材料设计" if is_zh else "🧩 Use in Composite Design", key="smart_composite"):
                                 st.session_state["comp_from_smart"] = {
                                     "name": best_name,
+                                    "T": st.session_state.get("target_T", 300),
+                                    "P": st.session_state.get("target_P", 1.0),
                                 }
-                                st.success(
-                                    "✅ 已记录 {} 参数！请切换到「🧩 复合材料」页面使用。".format(best_name)
-                                    if is_zh else
-                                    "✅ Saved {} parameters! Switch to Composite page to use.".format(best_name)
-                                )
+                                st.session_state["_redirect_to"] = "composite"
+                                st.rerun()
                 else:
                     st.warning("未找到可用的工质推荐。" if is_zh else "No suitable fluid found.")
 
@@ -2477,7 +2483,10 @@ def render_material_screening():
                 cp = coolprop_properties(scr_T, P_pa, cp_name, M_gmol/1000.0) if cp_name else {"error": "nocp"}
                 cp_ok = "error" not in str(cp)
                 # 无CoolProp基准物质：PR精度标记为N/A，不影响排序
-                pr_acc = 100.0 - min(abs((pr["density"]-cp["density"])/cp["density"]*100),100.0) if (cp_ok and cp.get("density",0)!=0) else (50.0 if cp_name else None)
+                try:
+                    pr_acc = 100.0 - min(abs((pr["density"]-cp["density"])/cp["density"]*100),100.0) if (cp_ok and cp.get("density",0)!=0) else (50.0 if cp_name else None)
+                except Exception:
+                    pr_acc = 50.0  # fallback on any calculation error
                 scores = {}
                 for pk, tk in [("density","tgt_d"),("cp","tgt_cp"),("alpha","tgt_a"),("thermal_conductivity","tgt_tc"),("viscosity","tgt_v")]:
                     tv = tgts.get(tk,0); pv = pr.get(pk)
@@ -2509,9 +2518,18 @@ def render_material_screening():
                 for i, r in enumerate(results): r["排名" if is_zh else "Rank"] = i+1
                 df = pd.DataFrame(results).drop(columns=["_s"])
                 st.subheader("📊 筛选结果" if is_zh else "📊 Screening Results")
-                st.dataframe(df, width="stretch", height=500)
-                top3 = results[:3]
-                st.success("🏆 Top 3: " + " | ".join([f"**{r['工质' if is_zh else 'Fluid']}** ({r['综合评分']}分)" for r in top3]))
+                if df is not None and not df.empty:
+                    st.dataframe(df, width="stretch", height=500)
+                else:
+                    st.warning("筛选结果为空" if is_zh else "Screening results empty")
+                top3 = results[:3] if len(results) >= 3 else results
+                if top3:
+                    try:
+                        st.success("🏆 Top 3: " + " | ".join([f"**{r.get('工质' if is_zh else 'Fluid', '?')}** ({r.get('综合评分', 0)}分)" for r in top3]))
+                    except Exception:
+                        st.success("🏆 Top 3 已生成，请在表格中查看详情" if is_zh else "Top 3 generated, see table for details")
+                else:
+                    st.info("结果不足3条" if is_zh else "Less than 3 results")
             else:
                 st.warning("无符合条件的工质。" if is_zh else "No matching fluids.")
 
@@ -3562,7 +3580,25 @@ def render_composite_page():
         "Predict effective thermal properties of polymer-matrix composites using physical mixing models (Hashin-Shtrikman / Maxwell-Eucken)."
     )
     st.markdown("---")
-    
+
+    # ── 从其他页面跳转过来的预填充 ──
+    from_smart = st.session_state.pop("comp_from_smart", None)
+    from_case = st.session_state.pop("comp_from_case", None)
+    if from_smart:
+        st.info(
+            f"📌 已从智能筛选导入：**{from_smart.get('name', '未知')}** | "
+            f"T={from_smart.get('T', 300)}K | P={from_smart.get('P', 1.0)}MPa"
+            if is_zh else
+            f"📌 Imported from Smart Screen: **{from_smart.get('name', 'Unknown')}** | "
+            f"T={from_smart.get('T', 300)}K | P={from_smart.get('P', 1.0)}MPa"
+        )
+    if from_case:
+        st.info(
+            f"📌 已从应用案例导入方案：**{from_case.get('solution', '')}** — {from_case.get('case_name', '')}"
+            if is_zh else
+            f"📌 Imported from Case Study: **{from_case.get('solution', '')}** — {from_case.get('case_name', '')}"
+        )
+
     # ── 材料选择 ──
     col1, col2 = st.columns(2)
     with col1:
@@ -4776,17 +4812,19 @@ def render_materials_database():
                                 f'</div>',
                                 unsafe_allow_html=True
                             )
-                            # 一键计算按钮：跳转复合材料模块
+                            # 一键计算按钮：跳转复合材料模块并自动填入参数
                             if st.button("🔬 一键计算" if is_zh else "🔬 Calculate", key=f"case_calc_{id(case)}_{si}"):
-                                st.session_state["comp_from_case"] = {
-                                    "case_name": case.get("title_zh", ""),
-                                    "solution": sol_name,
-                                }
-                                st.success(
-                                    "✅ 已记录方案参数！请切换到「🧩 复合材料」页面。"
-                                    if is_zh else
-                                    "✅ Solution saved! Switch to Composite page."
-                                )
+                                # 提取方案中的基体和填料信息
+                                comp_params = {}
+                                comp_params["case_name"] = case.get("title_zh", "")
+                                comp_params["solution"] = sol_name
+                                # 尝试从方案文字中解析基体和填料
+                                sol_text = sol_s["text_zh"] if is_zh else sol_s["text_en"]
+                                # 将方案信息存入 session_state
+                                st.session_state["comp_from_case"] = comp_params
+                                # 直接跳转到复合材料页面
+                                st.session_state["_redirect_to"] = "composite"
+                                st.rerun()
                 
                 st.markdown("---")
                 
@@ -5629,6 +5667,8 @@ def main():
     st.markdown(CSS_STYLES, unsafe_allow_html=True)
     render_report_button()  # 侧边栏技术报告按钮
 
+    # ── 页面跳转处理（通过 _redirect_to session flag 实现跨页面跳转）──
+    redirect_target = st.session_state.pop("_redirect_to", None)
     lang = st.session_state.get("lang", "zh")
     pg_home = st.Page(render_home_page,
         title="🏠 首页" if lang == "zh" else "🏠 Home", url_path="home", default=True)
@@ -5648,7 +5688,39 @@ def main():
         title="🎯 优化设计" if lang == "zh" else "🎯 Optimize", url_path="optimize_design")
     pg_comp = st.Page(render_composite_page,
         title="🧩 复合材料" if lang == "zh" else "🧩 Composite", url_path="composite")
-    pg = st.navigation({"pages": [pg_home, pg_main, pg_val, pg_opt, pg_scr, pg_ai, pg_comp, pg_opt_design, pg_mat_db]})
+    # ── 页面跳转支持（按钮跳转使用 switch_page，单文件用相对路径）──
+    # ── 页面跳转：如果 _redirect_to 有值，重建对应页面为默认页 ──
+    page_map = {"home": pg_home, "calc": pg_main, "validate": pg_val,
+                "optimize": pg_opt, "screening": pg_scr, "ai": pg_ai,
+                "materials_db": pg_mat_db, "optimize_design": pg_opt_design,
+                "composite": pg_comp}
+    if redirect_target and redirect_target in page_map:
+        # Rebuild the target page with default=True
+        target_pg = page_map[redirect_target]
+        # We need to create a new Page with default=True
+        # Extract the function and metadata from the existing page
+        render_funcs = {
+            "home": (render_home_page, "🏠 首页" if lang == "zh" else "🏠 Home", "home"),
+            "calc": (render_main_page, "🧪 基础物性" if lang == "zh" else "🧪 Base Props", "calc"),
+            "validate": (render_validation_page, "🔬 模型验证" if lang == "zh" else "🔬 Validation", "validate"),
+            "optimize": (render_smart_optimize, "🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", "optimize"),
+            "screening": (render_material_screening, "🔎 材料筛选" if lang == "zh" else "🔎 Screening", "screening"),
+            "ai": (render_ai_prediction, "🤖 AI预测" if lang == "zh" else "🤖 AI Predict", "ai"),
+            "materials_db": (render_materials_database, "📚 材料数据库" if lang == "zh" else "📚 Database", "materials_db"),
+            "optimize_design": (render_optimization_page, "🎯 优化设计" if lang == "zh" else "🎯 Optimize", "optimize_design"),
+            "composite": (render_composite_page, "🧩 复合材料" if lang == "zh" else "🧩 Composite", "composite"),
+        }
+        func, title, url = render_funcs[redirect_target]
+        new_target = st.Page(func, title=title, url_path=url, default=True)
+        other_keys = [k for k in render_funcs if k != redirect_target]
+        other_pages = []
+        for k in other_keys:
+            of, ot, ou = render_funcs[k]
+            other_pages.append(st.Page(of, title=ot, url_path=ou, default=False))
+        all_pages = [new_target] + other_pages
+    else:
+        all_pages = [pg_home, pg_main, pg_val, pg_opt, pg_scr, pg_ai, pg_comp, pg_opt_design, pg_mat_db]
+    pg = st.navigation({"pages": all_pages})
     pg.run()
 
 
