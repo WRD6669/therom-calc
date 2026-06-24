@@ -1944,37 +1944,37 @@ def render_ai_prediction():
     """Render AI prediction page."""
     t = LANG[st.session_state.get("lang", "zh")]
     is_zh = st.session_state.get("lang", "zh") == "zh"
-    
+    import os
+    model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
+
     st.header(t["ai_title"])
     st.markdown(t["ai_desc"])
     st.markdown("---")
-    
+
     # --- Section 1: Model Training ---
     col1, col2 = st.columns([2, 1])
     with col1:
         st.subheader("📊 " + ("数据集与训练" if is_zh else "Dataset & Training"))
     with col2:
         train_clicked = st.button(t["ai_train_btn"], width="stretch", key="ai_train")
-    
-    # Auto-load saved model on first visit
-    if "ai_model" not in st.session_state:
+
+    # Auto-load saved model on first visit (only if model.pkl exists)
+    if "ai_model" not in st.session_state and os.path.exists(model_pkl_path):
         try:
             import joblib
-            model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
-            if os.path.exists(model_pkl_path):
-                combined = joblib.load(model_pkl_path)
-                st.session_state["ai_model"] = {
-                    "rf_density": combined["rf_density"],
-                    "rf_cp": combined["rf_cp"],
-                    "r2_density": 0.95, "r2_cp": 0.89,
-                    "n_total": 0, "n_train": 0,
-                }
-                st.session_state["ai_trained"] = True
-                st.success(
-                    "✅ 已加载保存的模型 (model.pkl)"
-                    if is_zh else
-                    "✅ Loaded saved model (model.pkl)"
-                )
+            combined = joblib.load(model_pkl_path)
+            st.session_state["ai_model"] = {
+                "rf_density": combined["rf_density"],
+                "rf_cp": combined["rf_cp"],
+                "r2_density": 0.95, "r2_cp": 0.89,
+                "n_total": 0, "n_train": 0,
+            }
+            st.session_state["ai_trained"] = True
+            st.success(
+                "✅ 已加载保存的模型 (model.pkl)"
+                if is_zh else
+                "✅ Loaded saved model (model.pkl)"
+            )
         except ImportError:
             st.warning(
                 "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
@@ -1983,23 +1983,6 @@ def render_ai_prediction():
             )
         except Exception:
             pass
-        if os.path.exists(model_pkl_path):
-            try:
-                combined = joblib.load(model_pkl_path)
-                st.session_state["ai_model"] = {
-                    "rf_density": combined["rf_density"],
-                    "rf_cp": combined["rf_cp"],
-                    "r2_density": 0.95, "r2_cp": 0.89,
-                    "n_total": 0, "n_train": 0,
-                }
-                st.session_state["ai_trained"] = True
-                st.success(
-                    "✅ 已加载保存的模型 (model.pkl)"
-                    if is_zh else
-                    "✅ Loaded saved model (model.pkl)"
-                )
-            except Exception:
-                pass
 
     if train_clicked:
         try:
@@ -2041,13 +2024,11 @@ def render_ai_prediction():
             st.session_state["ai_model"] = model_info
             st.session_state["ai_trained"] = True
 
-            # 进度条完成
             progress_bar.progress(100)
             progress_text.text(
                 "✅ 训练完成！"
                 if is_zh else "✅ Training complete!"
             )
-            # 1秒后自动消失
             import time
             time.sleep(0.8)
             progress_text.empty()
@@ -2062,41 +2043,45 @@ def render_ai_prediction():
             )
         except ImportError as e:
             st.error(
-                "AI模块需要scikit-learn和joblib。请运行: pip install scikit-learn joblib"
+                "⚠️ 机器学习库未安装，请检查 requirements.txt 是否包含 scikit-learn 和 joblib"
                 if is_zh else
-                "AI module requires scikit-learn and joblib. Run: pip install scikit-learn joblib"
+                "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
             )
             st.session_state["ai_trained"] = False
-            if 'progress_bar' in dir():
+            try:
                 progress_text.empty()
                 progress_bar.empty()
+            except Exception:
+                pass
         except Exception as e:
             st.error(f"训练失败: {e}" if is_zh else f"Training failed: {e}")
             st.session_state["ai_trained"] = False
-            if 'progress_bar' in dir():
+            try:
                 progress_text.empty()
                 progress_bar.empty()
-    
+            except Exception:
+                pass
+
     # Show model info if trained
     if st.session_state.get("ai_trained") and "ai_model" in st.session_state:
         mi = st.session_state["ai_model"]
-        
+
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            st.metric(t["ai_train_r2"] + " (ρ)", f"{mi['r2_density']:.4f}")
+            st.metric(t["ai_train_r2"] + " (ρ)", f"{mi.get('r2_density', 0):.4f}")
         with c2:
-            st.metric(t["ai_train_r2"] + " (Cp)", f"{mi['r2_cp']:.4f}")
+            st.metric(t["ai_train_r2"] + " (Cp)", f"{mi.get('r2_cp', 0):.4f}")
         with c3:
-            st.metric(t["ai_train_samples"], mi["n_samples"])
+            st.metric(t["ai_train_samples"], mi.get("n_total", mi.get("n_train", 0)))
         with c4:
-            st.metric(t["ai_n_estimators"], "150")
-        
+            st.metric(t["ai_n_estimators"], "100")
+
         # Feature importance chart
         with st.expander(t["ai_feature_importance"], expanded=False):
             importances_d = mi["rf_density"].feature_importances_
             importances_c = mi["rf_cp"].feature_importances_
             names = mi["feature_names"]
-            
+
             fig_imp = make_subplots(rows=1, cols=2, subplot_titles=(
                 "密度模型" if is_zh else "Density Model",
                 "Cp 模型" if is_zh else "Cp Model"))
@@ -2107,9 +2092,9 @@ def render_ai_prediction():
             fig_imp.update_layout(height=350, template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_imp, width="stretch")
-    
+
     st.markdown("---")
-    
+
     # --- Section 2: Unknown Material Explorer ---
     st.subheader(t["ai_unknown_mode"])
     st.markdown(t["ai_unknown_desc"])
@@ -2167,6 +2152,7 @@ def render_ai_prediction():
     predict_clicked = st.button(t["ai_predict_btn"], width="stretch", key="ai_predict_btn")
 
     if predict_clicked:
+        # 检查joblib是否可用
         try:
             import joblib
         except ImportError:
@@ -2175,12 +2161,9 @@ def render_ai_prediction():
                 if is_zh else
                 "⚠️ ML libraries not installed. Check requirements.txt for scikit-learn and joblib"
             )
-            joblib = None
-        if joblib is None:
             st.stop()
-        model_pkl_path = os.path.join(MODEL_DIR, "model.pkl")
 
-        # 检查model.pkl是否存在
+        # model_pkl_path already defined at top of function
         if not os.path.exists(model_pkl_path):
             st.error(
                 "⚠️ 模型未训练，请先点击「训练/更新模型」"
@@ -2207,7 +2190,7 @@ def render_ai_prediction():
                     st.markdown("---")
                     st.subheader(t["ai_predict_header"])
 
-                    # 主结果：格式化为 "密度 = X.XXX kg/m³，定压比热容 = X.XXX kJ/(kg·K)"
+                    # 主结果
                     st.markdown(
                         f'<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);'
                         f'border-radius:16px;padding:24px;margin:16px 0;text-align:center;">'
@@ -2258,11 +2241,10 @@ def render_ai_prediction():
     # Footer
     st.markdown("---")
     st.caption(
-        "🤖 AI模块基于 RandomForest | 特征: [Tc, Pc, ω, T, P] | 目标: 密度 + Cp | 训练数据: CoolProp基准值"
+        "\U0001f916 AI\u6a21\u5757\u57fa\u4e8e RandomForest | \u7279\u5f81: [Tc, Pc, \u03c9, T, P] | \u76ee\u6807: \u5bc6\u5ea6 + Cp | \u8bad\u7ec3\u6570\u636e: CoolProp\u57fa\u51c6\u503c"
         if is_zh else
-        "🤖 AI Module powered by RandomForest | Features: [Tc, Pc, ω, T, P] | Targets: Density + Cp | Training data: CoolProp benchmark"
+        "\U0001f916 AI Module powered by RandomForest | Features: [Tc, Pc, \u03c9, T, P] | Targets: Density + Cp | Training data: CoolProp benchmark"
     )
-
 
 
 CSS_STYLES = """<style>
@@ -2334,9 +2316,7 @@ def main():
         title="🧠 智能筛选" if lang == "zh" else "🧠 Smart Screen", url_path="optimize")
     pg_scr = st.Page(render_material_screening,
         title="🔎 材料筛选" if lang == "zh" else "🔎 Screening", url_path="screening")
-    pg_ai = st.Page(render_ai_prediction,
-        title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
-    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai]})
+    pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr]})
     pg.run()
 
 
