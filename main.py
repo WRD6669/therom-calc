@@ -889,7 +889,7 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
         ("density",              t["density"],      t["unit_density"]),
         ("cp",                   t["cp"],           t["unit_cp"]),
         ("cv",                   t["cv"],           t["unit_cp"]),
-        ("alpha",                t["alpha"],        t["unit_alpha"]),
+        ("alpha",                t["alpha"],        t["unit_alpha"] + " *"),
         ("thermal_conductivity", t["thermal_cond"], t["unit_tc"]),
         ("viscosity",            t["viscosity"],    t["unit_visc"]),
     ]
@@ -940,6 +940,13 @@ def render_results(pr_result, cp_result, fluid_info, P_pa, t):
             f'<span class="dev-badge-v2 {dev_class}"><span class="dev-dot"></span>{dev_str}</span></div>'
             '</div></div>')
         st.markdown(card, unsafe_allow_html=True)
+
+    # Alpha accuracy note
+    if is_zh:
+        st.caption("* 热膨胀系数 α 为数值求导计算，气相区精度受限，仅供趋势参考。")
+    else:
+        st.caption("* Thermal expansion α is numerically differentiated. Limited accuracy in gas phase, for trend reference only.")
+
 
     # ── 输运性质精度警告 ──
     has_transport = any(key in (pr_result or {}) for key in ["thermal_conductivity", "viscosity"])
@@ -1149,7 +1156,7 @@ def render_validation_page():
         ("Ethylene", 300.0, 1.0), ("Ethylene", 350.0, 0.5),
         ("Propylene", 350.0, 1.0), ("Propylene", 400.0, 0.5),
         ("CarbonDioxide", 300.0, 1.0), ("CarbonDioxide", 350.0, 5.0),
-        ("Nitrogen", 300.0, 1.0), ("Nitrogen", 200.0, 5.0),
+        ("Nitrogen", 300.0, 1.0),
         ("Oxygen", 300.0, 1.0), ("CarbonMonoxide", 300.0, 1.0),
         ("R134a", 350.0, 1.0), ("R134a", 400.0, 0.5),
     ]
@@ -1527,7 +1534,12 @@ def render_smart_optimize():
                 fig.update_xaxes(title_text="工质编号" if is_zh else "Fluid Index", row=2, col=2)
                 fig.update_yaxes(title_text="偏差 (%)", row=1, col=1); fig.update_yaxes(title_text="偏差 (%)", row=1, col=2)
                 fig.update_yaxes(title_text="平均密度偏差 (%)" if is_zh else "Avg Density Dev (%)", row=2, col=2)
-                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=1); fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=2)
+                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=1)
+                fig.add_hline(y=0, line_color="white", opacity=0.3, row=1, col=2)
+                # Cp acceptable range reference lines
+                fig.add_hline(y=15, line_dash="dash", line_color="#f59e0b", opacity=0.5, row=1, col=2,
+                    annotation_text="Cp <15% acceptable" if not is_zh else "Cp <15% 可接受",
+                    annotation_position="top right")
                 fig.update_layout(height=750, hovermode="x unified",
                     legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="center", x=0.5),
                     template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
@@ -1681,14 +1693,14 @@ def render_material_screening():
     ]):
         with col: tgts[key] = st.number_input(label, lo, hi, 0.0, format="%.4f", key=f"scr_{key}")
 
-    include_polar = st.checkbox("包含强极性物质" if is_zh else "Include highly polar fluids", value=False, key="scr_polar")
+    include_polar = st.checkbox("包含强极性物质/新材料" if is_zh else "Include polar fluids & new materials", value=False, key="scr_polar")
 
     if st.button("🔍 开始筛选排序" if is_zh else "🔍 Start Screening", width="stretch"):
         with st.spinner("正在扫描..." if is_zh else "Scanning..."):
             results = []; P_pa = scr_P * 1e6
             for fi in FLUID_DATABASE:
                 name_zh, name_en, M_gmol, Tc, Pc, omega, cp_coeffs, cp_name, polarity = fi
-                if polarity == "high" and not include_polar: continue
+                if polarity in ("high", "nocp") and not include_polar: continue
                 pr = pr_engine_properties(scr_T, P_pa, fi)
                 if "error" in str(pr): continue
                 cp = coolprop_properties(scr_T, P_pa, cp_name, M_gmol/1000.0) if cp_name else {"error": "nocp"}
@@ -1894,6 +1906,12 @@ def render_ai_prediction():
                 st.session_state["ai_omega"] = val["omega"]
                 st.info(t.get("ai_preset_filled", "Filled").format(
                     val["desc_zh"] if is_zh else val["desc_en"]))
+                if val.get("polar"):
+                    st.warning(
+                        "⚠️ 该物质为强极性/离子液体，PR方程精度受限，建议以AI预测值为参考。"
+                        if is_zh else
+                        "⚠️ This material is highly polar / ionic liquid. PR EOS has limited accuracy. AI prediction is recommended as reference."
+                    )
                 break
 
     col_a, col_b, col_c, col_d, col_e = st.columns(5)
@@ -2053,6 +2071,10 @@ def main():
         title="🤖 AI预测" if lang == "zh" else "🤖 AI Predict", url_path="ai")
     pg = st.navigation({"pages": [pg_main, pg_val, pg_opt, pg_scr, pg_ai]})
     pg.run()
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
