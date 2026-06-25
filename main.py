@@ -2002,7 +2002,7 @@ def render_smart_optimize():
                         # PR一致性：仅当CoolProp有效时计算
                         if cp_valid:
                             pr_dev = abs((pr_val - cp_val) / cp_val * 100)
-                            pr_consistency = max(0, 100 - pr_dev)
+                            pr_consistency = max(0, min(100, 100 - pr_dev))  # clamp 0-100
                         else:
                             pr_dev = None
                             pr_consistency = None
@@ -3606,12 +3606,22 @@ def render_composite_page():
             f"T={from_smart.get('T', 300)}K | P={from_smart.get('P', 1.0)}MPa"
         )
     if from_case:
+        imported_matrix = from_case.get("matrix")
+        imported_filler = from_case.get("filler")
+        imported_vf = from_case.get("vf_pct", 20)
+        # Pre-fill session state (will be picked up by selectbox/slider via key)
+        if imported_matrix and imported_matrix in COMPOSITE_MATRIX_DB:
+            st.session_state["comp_matrix"] = imported_matrix
+        if imported_filler and imported_filler in COMPOSITE_FILLER_DB:
+            st.session_state["comp_filler"] = imported_filler
+        st.session_state["comp_vf"] = imported_vf
         st.info(
-            f"📌 已从应用案例导入方案：**{from_case.get('solution', '')}** — {from_case.get('case_name', '')}"
+            f"📌 已从应用案例导入方案：**{from_case.get("solution", "")}** — {from_case.get("case_name", "")}\n\n"
+            f"基体：{imported_matrix or "?"} | 填料：{imported_filler or "?"} | VF：{imported_vf}%"
             if is_zh else
-            f"📌 Imported from Case Study: **{from_case.get('solution', '')}** — {from_case.get('case_name', '')}"
+            f"📌 Imported from Case Study: **{from_case.get("solution", "")}** — {from_case.get("case_name", "")}\n\n"
+            f"Matrix: {imported_matrix or "?"} | Filler: {imported_filler or "?"} | VF: {imported_vf}%"
         )
-
     # ── 材料选择 ──
     col1, col2 = st.columns(2)
     with col1:
@@ -3789,15 +3799,28 @@ MATERIAL_DB_OPT = {
 
 def _compute_tc(vf, lam_f, lam_m):
     """Maxwell-Eucken 导热系数（球形分散）。"""
-    if lam_f <= 0 or lam_m <= 0:
-        return lam_m
-    return lam_m * (lam_f + 2*lam_m + 2*vf*(lam_f - lam_m)) / (lam_f + 2*lam_m - vf*(lam_f - lam_m))
+    if lam_f <= 0 or lam_m <= 0 or vf < 0 or vf > 1:
+        return max(lam_m, 0.01)
+    import math
+    result = lam_m * (lam_f + 2*lam_m + 2*vf*(lam_f - lam_m)) / max(lam_f + 2*lam_m - vf*(lam_f - lam_m), 1e-12)
+    return max(result, 0.01)  # ensure positive
 
 
 def _compute_cte(vf, a_f, a_m, rho_f, rho_m):
-    """Turner 热膨胀系数模型。"""
+    """Turner 热膨胀系数模型（带边界保护）。"""
+    # 安全检查
+    vf = max(0, min(1, vf))
+    if rho_f <= 0 or rho_m <= 0:
+        return vf*a_f + (1-vf)*a_m
     K_f = rho_f * 1e-3; K_m = rho_m * 1e-3
     denom = vf*K_f + (1-vf)*K_m
+    if denom <= 0:
+        return vf*a_f + (1-vf)*a_m
+    result = (vf*K_f*a_f + (1-vf)*K_m*a_m) / denom
+    # 截断异常值
+    if not (-1e-3 < result < 1e-2):
+        result = max(-1e-5, min(1e-3, result))
+    return result
     if denom <= 0: return vf*a_f + (1-vf)*a_m
     return (vf*K_f*a_f + (1-vf)*K_m*a_m) / denom
 
@@ -3826,7 +3849,7 @@ def _optimize_formulation(matrix_name, filler_name, target_lam, max_rho, max_cos
         lam = _compute_tc(vf, lam_f, lam_m)
         rho = vf*rho_f + (1-vf)*rho_m
         mass_t = vf*rho_f + (1-vf)*rho_m
-        cost_per_kg = (vf*rho_f*price_f + (1-vf)*rho_m*price_m) / max(mass_t, 1e-9)
+        cost_per_kg = max(0, (vf*rho_f*price_f + (1-vf)*rho_m*price_m) / max(mass_t, 1e-9))  # 成本不得为负
         # 约束惩罚
         penalty = 0
         if rho > max_rho: penalty += (rho - max_rho) * 1000
@@ -3915,6 +3938,17 @@ def render_optimization_page():
             )
         else:
             allowed_mats = list(MATERIAL_DB_OPT.keys())
+            # ── 目标可实现性预检 ──
+            max_filler_lam = max((MATERIAL_DB_OPT[k]["lambda"] for k in MATERIAL_DB_OPT if "lambda" in MATERIAL_DB_OPT[k]), default=0)
+            max_matrix_lam = max((MATERIAL_DB_OPT[k]["lambda"] for k in MATERIAL_DB_OPT if "lambda" in MATERIAL_DB_OPT[k] and MATERIAL_DB_OPT[k].get("lambda", 0) <= 10), default=0)
+            # 粗略估计：最好填料在0.6 VF下的导热
+            est_max_lam = max_matrix_lam * (max_filler_lam + 2*max_matrix_lam + 2*0.6*(max_filler_lam - max_matrix_lam)) / (max_filler_lam + 2*max_matrix_lam - 0.6*(max_filler_lam - max_matrix_lam)) if max_filler_lam > 0 and max_matrix_lam > 0 else 0
+            if est_max_lam > 0 and target_lam > est_max_lam * 1.1:
+                st.warning(
+                    f"⚠️ 当前材料库最高导热系数约{est_max_lam:.2f} W/(m·K)，无法达到目标{target_lam:.1f}。\n\n" +
+                    ("**建议**：① 降低目标λ值（建议≤{:.1f}）；② 添加石墨烯（λ≈5000）或金刚石（λ≈2000）等高导热填料".format(est_max_lam * 0.95) if is_zh else "**Tips**: ① Lower target | ② Add Graphene (λ≈5000) or Diamond (λ≈2000)")
+                )
+    
         
         optimize_btn = st.button(
             "🚀 开始优化" if is_zh else "🚀 Optimize",
@@ -4339,7 +4373,7 @@ def render_optimization_page():
                     
                     fig_pareto.update_layout(
                         title="成本 vs 导热系数 帕累托前沿" if is_zh else "Cost vs TC Pareto Frontier",
-                        xaxis_title="成本 (¥/kg)" if is_zh else "Cost (CNY/kg)",
+                        xaxis=dict(range=[0, max(max(all_x) if all_x else 150, 150)], title="成本 (¥/kg)" if is_zh else "Cost (CNY/kg)"),
                         yaxis_title="导热系数 (W/(m·K))" if is_zh else "TC (W/(m·K))",
                         template="plotly_dark",
                         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -4866,15 +4900,33 @@ def render_materials_database():
                             )
                             # 一键计算按钮：跳转复合材料模块并自动填入参数
                             if st.button("🔬 一键计算" if is_zh else "🔬 Calculate", key=f"case_calc_{id(case)}_{si}"):
-                                # 提取方案中的基体和填料信息
+                                # 智能解析方案中的基体/填料/体积分数
                                 comp_params = {}
                                 comp_params["case_name"] = case.get("title_zh", "")
                                 comp_params["solution"] = sol_name
-                                # 尝试从方案文字中解析基体和填料
                                 sol_text = sol_s["text_zh"] if is_zh else sol_s["text_en"]
-                                # 将方案信息存入 session_state
+                                # 解析格式: "基体材料 + XX% 填料" 或 "Matrix + XX% Filler"
+                                import re
+                                # 匹配模式: "环氧树脂 + 40% BN" 或 "Epoxy + 40% BN"
+                                pattern = r"([^+]+)\s*\+\s*(\d+)\s*%\s*(.+)"
+                                m = re.match(pattern, sol_text)
+                                if m:
+                                    matrix_raw = m.group(1).strip()
+                                    vf_pct = int(m.group(2))
+                                    filler_raw = m.group(3).strip()
+                                    # 尝试在 COMPOSITE_MATRIX_DB 和 COMPOSITE_FILLER_DB 中匹配
+                                    for mk in COMPOSITE_MATRIX_DB:
+                                        if matrix_raw in mk or mk in matrix_raw:
+                                            comp_params["matrix"] = mk; break
+                                    for fk in COMPOSITE_FILLER_DB:
+                                        if filler_raw in fk or fk in filler_raw:
+                                            comp_params["filler"] = fk; break
+                                    comp_params["vf_pct"] = vf_pct
+                                else:
+                                    # 回退：仅保存方案文本
+                                    comp_params["matrix"] = None
+                                    comp_params["filler"] = None
                                 st.session_state["comp_from_case"] = comp_params
-                                # 直接跳转到复合材料页面
                                 st.session_state["_redirect_to"] = "composite"
                                 st.rerun()
                 
@@ -4951,7 +5003,7 @@ def render_home_page():
         ("13,905", "训练数据条数" if is_zh else "Training Samples", "#c4b5fd"),
         ("25+", "覆盖物质种类" if is_zh else "Fluids Covered", "#67e8f9"),
         ("0.95", "AI Cp预测 R²" if is_zh else "AI Cp R²", "#6ee7b7"),
-        (">99%", "两相区检测准确率" if is_zh else "Two-Phase Detection", "#fbbf24"),
+        (">=98.5%", "两相区检测准确率" if is_zh else "Two-Phase Detection", "#fbbf24"),
     ]):
         with col:
             st.markdown(
